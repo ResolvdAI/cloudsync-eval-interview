@@ -65,6 +65,7 @@ Build an evaluation system that:
 ### Success Metrics
 - **Task Completion Accuracy**: Does the agent successfully resolve/route the customer inquiry?
 - **Response Quality**: Is the response helpful, accurate, and appropriately toned?
+- **Tool Usage**: Were the appropriate tools for a given request used?
 
 ### Bonus Points
 - Automated prompt optimization
