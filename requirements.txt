@@ -1,0 +1,25 @@
+# Core dependencies
+llama-index>=0.10.37
+llama-index-llms-anthropic>=0.1.11
+llama-index-embeddings-openai>=0.1.8
+anthropic>=0.25.1
+openai>=1.28.0
+
+# Data processing
+pandas>=2.2.2
+numpy>=1.26.4
+
+# Testing
+pytest>=8.2.0
+pytest-asyncio>=0.23.6
+
+# Utilities
+python-dotenv>=1.0.1
+pydantic>=2.7.1
+pydantic-settings>=2.2.1
+tenacity>=8.3.0
+
+# Evaluation tools
+scikit-learn>=1.4.2
+textstat>=0.7.3
+rouge-score>=0.1.2

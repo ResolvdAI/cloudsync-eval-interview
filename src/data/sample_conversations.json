@@ -1,0 +1,34 @@
+{
+	"conversations": [
+		{
+			"id": "conv_001",
+			"query": "What's my current subscription plan and when is my next billing date?",
+			"customer_email": "john.doe@example.com"
+		},
+		{
+			"id": "conv_002",
+			"query": "My files aren't syncing on my Mac. I've tried restarting the app but it's still showing a red icon. This is urgent as I need to access these files for a presentation in 2 hours.",
+			"customer_email": "jane.smith@company.com"
+		},
+		{
+			"id": "conv_003",
+			"query": "I want to upgrade from Basic to Professional plan. Can you help me with that?",
+			"customer_email": "support@startup.io"
+		},
+		{
+			"id": "conv_004",
+			"query": "We're experiencing intermittent sync failures across our entire team of 50 users. Some files sync fine, others get stuck at 'uploading' indefinitely. This started after we updated to the latest version yesterday. We've already tried the basic troubleshooting steps.",
+			"customer_email": "admin@enterprise.org"
+		},
+		{
+			"id": "conv_005",
+			"query": "I was charged twice this month. I see two $29 charges on my credit card statement but I only have one account. I need this fixed immediately and a refund for the duplicate charge.",
+			"customer_email": "user@test.com"
+		}
+	],
+	"metadata": {
+		"description": "Sample customer queries for testing the support agent",
+		"usage": "Use these queries with create_test_dataset.py to generate test datasets, or create your own queries with run_cli.py",
+		"total_queries": 5
+	}
+}
