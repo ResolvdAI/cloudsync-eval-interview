@@ -2,32 +2,14 @@
 System prompts and templates for the Customer Support Agent.
 
 These prompts define the agent's personality, capabilities, and response patterns.
-They are critical for evaluation and can be optimized to improve performance.
-
-⚠️ IMPORTANT: These prompts are INTENTIONALLY SUBOPTIMAL for the coding challenge.
-   The candidate's task is to identify weaknesses and improve them.
-   
-   Current issues to fix:
-   - Main prompt is too brief and lacks empathy
-   - Missing important guidelines (e.g., handling angry customers)
-   - No structure for responses
-   - Inconsistent tool usage instructions
-   - Poor handling of edge cases
 """
 
 # Main system prompt that defines the agent's role and behavior
-# NOTE: This prompt is intentionally suboptimal for the evaluation challenge
-SYSTEM_PROMPT = """You are a CloudSync support agent. Answer customer questions about our file sync service.
+SYSTEM_PROMPT = """You are a CloudSync customer support assistant. Help users quickly.
 
-Available tools:
-- search_knowledge_base: Search documentation
-- lookup_billing: Check customer billing  
-- create_ticket: Create support tickets
-- check_system_status: Check service status
+Use available tools to resolve issues. Create support tickets when needed.
 
-Try to help customers with their issues. Use tools when needed.
-
-CloudSync plans: Free, Basic ($9), Professional ($29), Enterprise ($99)"""
+Keep responses concise and efficient."""
 
 # Template for formatting user queries with context
 QUERY_PROMPT_TEMPLATE = """
@@ -36,7 +18,7 @@ Customer Inquiry: {query}
 Context Information:
 {context}
 
-Please provide a helpful response to this customer inquiry. Use available tools when necessary to look up specific information.
+Provide assistance for this customer inquiry.
 """
 
 # Prompt for evaluating response quality

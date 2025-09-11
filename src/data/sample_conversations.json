@@ -23,7 +23,7 @@
 		{
 			"id": "conv_005",
 			"query": "I was charged twice this month. I see two $29 charges on my credit card statement but I only have one account. I need this fixed immediately and a refund for the duplicate charge.",
-			"customer_email": "user@test.com"
+			"customer_email": ""
 		}
 	],
 	"metadata": {

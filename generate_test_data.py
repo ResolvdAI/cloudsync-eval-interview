@@ -108,7 +108,7 @@ def save_dataset(results: List[Dict], output_path: str):
         "metadata": {
             "created_at": datetime.now().isoformat(),
             "total_tests": len(results),
-            "agent_model": "claude-sonnet-4-20250514",
+            "agent_model": "claude-3-5-haiku-20241022",
             "description": "Test dataset generated from sample queries"
         },
         "results": results

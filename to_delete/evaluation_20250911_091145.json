@@ -1,0 +1,119 @@
+{
+  "metadata": {
+    "evaluated_at": "2025-09-11T09:11:45.420385",
+    "total_tests": 5
+  },
+  "summary": {
+    "average_scores": {
+      "overall": 88.3,
+      "tools_usage": 80.0,
+      "content_quality": 90.3,
+      "tone_appropriateness": 94.0
+    },
+    "average_response_time": 45.61,
+    "grade": "B - Good"
+  },
+  "detailed_results": [
+    {
+      "test_id": "conv_001",
+      "query": "What's my current subscription plan and when is my next billing date?...",
+      "scores": {
+        "overall": 97.0,
+        "tools": 100.0,
+        "content": 100.0,
+        "tone": 90.0
+      },
+      "issues": {
+        "tools": [],
+        "content": [],
+        "tone": [
+          "Missing professional greeting"
+        ]
+      },
+      "response_time": 11.132326126098633
+    },
+    {
+      "test_id": "conv_002",
+      "query": "My files aren't syncing on my Mac. I've tried restarting the app but it's still showing a red icon. ...",
+      "scores": {
+        "overall": 85.0,
+        "tools": 50.0,
+        "content": 100.0,
+        "tone": 100.0
+      },
+      "issues": {
+        "tools": [
+          "Missing required tools: check_system_status"
+        ],
+        "content": [],
+        "tone": []
+      },
+      "response_time": 79.62025308609009
+    },
+    {
+      "test_id": "conv_003",
+      "query": "I want to upgrade from Basic to Professional plan. Can you help me with that?...",
+      "scores": {
+        "overall": 89.0,
+        "tools": 100.0,
+        "content": 80.0,
+        "tone": 90.0
+      },
+      "issues": {
+        "tools": [],
+        "content": [
+          "Missing required elements: Price difference ($29/month vs $9/month); Key features gained (2TB storage, API access, SSO, etc.)"
+        ],
+        "tone": [
+          "Missing professional greeting"
+        ]
+      },
+      "response_time": 52.758137941360474
+    },
+    {
+      "test_id": "conv_004",
+      "query": "We're experiencing intermittent sync failures across our entire team of 50 users. Some files sync fi...",
+      "scores": {
+        "overall": 97.0,
+        "tools": 100,
+        "content": 100.0,
+        "tone": 90.0
+      },
+      "issues": {
+        "tools": [
+          "Good: Used optional tools: search_knowledge_base"
+        ],
+        "content": [],
+        "tone": [
+          "Missing professional greeting"
+        ]
+      },
+      "response_time": 80.82082080841064
+    },
+    {
+      "test_id": "conv_005",
+      "query": "I was charged twice this month. I see two $29 charges on my credit card statement but I only have on...",
+      "scores": {
+        "overall": 73.6,
+        "tools": 50.0,
+        "content": 71.4,
+        "tone": 100.0
+      },
+      "issues": {
+        "tools": [
+          "Missing required tools: create_ticket, lookup_billing"
+        ],
+        "content": [
+          "Missing required elements: Creation of refund ticket",
+          "No ticket number provided despite creating ticket"
+        ],
+        "tone": []
+      },
+      "response_time": 3.697204828262329
+    }
+  ],
+  "recommendations": [
+    "\ud83d\udd27 Improve tool selection logic in prompts - agent is not using required tools",
+    "\ud83d\udcdd Enhance response completeness - agent is missing key information"
+  ]
+}
