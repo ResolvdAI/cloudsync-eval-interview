@@ -32,7 +32,7 @@ vector_index/
 test_datasets/
 evaluation_results/
 test_outputs/
-to_delete_before_test/
+to_delete/
 conversation_*.json
 test_dataset_*.json
 comparison_dataset_*.json
