@@ -17,9 +17,25 @@ You've inherited a customer support agent for CloudSync, a file synchronization 
    source venv/bin/activate
    pip install -r requirements.txt
    export ANTHROPIC_API_KEY="your-key"
+   # Optional: export OPENAI_API_KEY="your-key" for better embeddings
    ```
 
-2. **Test the Agent**
+2. **Initialize Knowledge Base**
+   ```bash
+   # Clear any cached embeddings
+   rm -rf storage/vector_index/
+   
+   # Verify setup and generate fresh embeddings
+   python verify_setup.py
+   ```
+   
+   The first run will generate embeddings for the knowledge base documents (FAQs, troubleshooting guides, pricing). This may take 30-60 seconds. You'll see:
+   - "✨ Creating vector index from src/knowledge_base/documents..."
+   - The system will cache these for subsequent runs
+   
+   **Note**: Without an OpenAI API key, the system uses default embeddings which are slower but still functional
+
+3. **Test the Agent**
    ```bash
    # Interactive testing
    python run_cli.py
@@ -28,7 +44,7 @@ You've inherited a customer support agent for CloudSync, a file synchronization 
    python generate_test_data.py --max-queries 5
    ```
 
-3. **Examine the System**
+4. **Examine the System**
    - Agent code: `src/agent/`
    - Knowledge base: `src/knowledge_base/documents/`
    - Sample queries: `src/data/sample_conversations.json`

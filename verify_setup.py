@@ -89,14 +89,12 @@ def verify_project_structure():
             data = json.load(f)
 
         num_conversations = len(data.get("conversations", []))
-        categories = set(conv["category"]
-                         for conv in data.get("conversations", []))
-        difficulties = set(conv["difficulty"]
-                           for conv in data.get("conversations", []))
+        has_emails = sum(1 for conv in data.get("conversations", [])
+                         if conv.get("customer_email"))
 
         print(f"✅ {num_conversations} sample conversations loaded")
-        print(f"   Categories: {', '.join(sorted(categories))}")
-        print(f"   Difficulties: {', '.join(sorted(difficulties))}")
+        print(f"   {has_emails} with customer emails")
+        print(f"   {num_conversations - has_emails} anonymous queries")
 
         # Check evaluation criteria
         if "evaluation_criteria" in data:
