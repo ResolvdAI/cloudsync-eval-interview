@@ -96,13 +96,6 @@ def verify_project_structure():
         print(f"   {has_emails} with customer emails")
         print(f"   {num_conversations - has_emails} anonymous queries")
 
-        # Check evaluation criteria
-        if "evaluation_criteria" in data:
-            criteria = data["evaluation_criteria"]
-            print(f"✅ {len(criteria)} evaluation criteria defined")
-            total_weight = sum(c["weight"] for c in criteria.values())
-            print(
-                f"   Total weight: {total_weight:.2f} {'✅' if abs(total_weight - 1.0) < 0.01 else '⚠️ (should be 1.0)'}")
     else:
         print("❌ Sample conversations file missing")
 
