@@ -276,9 +276,14 @@ class CustomerSupportAgent:
         if metadata:
             logger.debug(f"Query metadata: {metadata}")
 
-        # Format the query with any metadata
-        formatted_query = self._format_query(user_query, metadata)
-        logger.debug("Query formatted and ready for processing")
+        # Get conversation history from memory
+        from llama_index.core.llms import ChatMessage, MessageRole
+        conversation_history = self.memory.get()
+
+        # Format the query with metadata and conversation history
+        formatted_query = self._format_query_with_history(
+            user_query, metadata, conversation_history)
+        logger.debug("Query formatted with conversation history")
 
         # Create a new async function to run the agent
         async def run_agent_async():
@@ -304,6 +309,12 @@ class CustomerSupportAgent:
             response = asyncio.run(run_agent_async())
 
         response_str = str(response)
+
+        # Store the conversation in memory
+        self.memory.put(ChatMessage(role=MessageRole.USER, content=user_query))
+        self.memory.put(ChatMessage(
+            role=MessageRole.ASSISTANT, content=response_str))
+
         logger.info(f"💬 Response length: {len(response_str)} characters")
         logger.debug(f"Response preview: {response_str[:200]}..." if len(
             response_str) > 200 else f"Response: {response_str}")
@@ -339,6 +350,54 @@ class CustomerSupportAgent:
             return f"[{context}]\n\n{query}"
 
         return query
+
+    def _format_query_with_history(
+        self,
+        query: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        conversation_history: Optional[List] = None
+    ) -> str:
+        """
+        Format the user query with metadata and conversation history.
+
+        Args:
+            query: Raw user query
+            metadata: Optional metadata dict
+            conversation_history: List of ChatMessage objects from memory
+
+        Returns:
+            Formatted query string with conversation context
+        """
+        # Start with the base query
+        formatted_parts = []
+
+        # Add conversation history if available
+        if conversation_history:
+            history_text = "Previous conversation:\n"
+            for msg in conversation_history:
+                role = "User" if msg.role == "user" else "Assistant"
+                history_text += f"{role}: {msg.content}\n"
+            formatted_parts.append(history_text)
+
+        # Add metadata context if provided
+        if metadata:
+            context_parts = []
+            if "customer_id" in metadata:
+                context_parts.append(f"Customer ID: {metadata['customer_id']}")
+            if "customer_email" in metadata:
+                context_parts.append(
+                    f"Customer Email: {metadata['customer_email']}")
+            if "account_type" in metadata:
+                context_parts.append(
+                    f"Account Type: {metadata['account_type']}")
+
+            if context_parts:
+                formatted_parts.append("[" + " | ".join(context_parts) + "]")
+
+        # Add the current query
+        formatted_parts.append(f"Current query: {query}")
+
+        return "\n\n".join(formatted_parts)
 
     def reset_memory(self):
         """Reset the conversation memory."""

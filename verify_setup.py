@@ -51,7 +51,6 @@ def verify_project_structure():
         ("src/data/sample_conversations.json", "Test data"),
         ("tests/test_agent.py", "Test suite"),
         ("example_usage.py", "Usage examples"),
-        ("QUICKSTART.md", "Quick start guide"),
     ]
 
     for file_path, description in required_files:

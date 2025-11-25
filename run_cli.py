@@ -13,7 +13,6 @@ Usage:
     python run_cli.py
 """
 
-from src.agent.prompts import PROMPT_VARIATIONS
 from src.agent.core import CustomerSupportAgent
 import os
 import sys
@@ -39,7 +38,6 @@ class CloudSyncCLI:
         self.verbose = False
         self.current_customer = None
         self.conversation_history = []
-        self.prompt_mode = "default"
 
     def print_header(self):
         """Print the welcome header."""
@@ -52,7 +50,6 @@ class CloudSyncCLI:
         print("  /reset           - Clear conversation memory")
         print("  /verbose         - Toggle verbose mode (see agent thinking)")
         print("  /customer <email>- Set customer context")
-        print("  /prompt <type>   - Switch prompt style")
         print("  /test <id>       - Test sample conversation by ID")
         print("  /save            - Save conversation to file")
         print("  /tools           - Test tools directly")
@@ -72,8 +69,6 @@ class CloudSyncCLI:
             ("/customer <email>",
              "Set customer context (e.g., /customer john.doe@example.com)"),
             ("/customer clear", "Clear customer context"),
-            ("/prompt list", "List available prompt variations"),
-            ("/prompt <type>", "Switch prompt (e.g., /prompt empathetic)"),
             ("/test <id>", "Test sample conversation (e.g., /test conv_001)"),
             ("/test list", "List all available test conversations"),
             ("/save", "Save conversation history to file"),
@@ -87,7 +82,6 @@ class CloudSyncCLI:
         print("\n💡 Tips:")
         print("  - Use /verbose to understand how the agent thinks")
         print("  - Set customer context to test billing lookups")
-        print("  - Try different prompts to see how responses change")
         print("  - Test edge cases from sample conversations\n")
 
     def initialize_agent(self):
@@ -100,12 +94,6 @@ class CloudSyncCLI:
 
         try:
             self.agent = CustomerSupportAgent(verbose=self.verbose)
-
-            # Apply custom prompt if selected
-            if self.prompt_mode != "default" and self.prompt_mode in PROMPT_VARIATIONS:
-                self.agent.agent.system_prompt = PROMPT_VARIATIONS[self.prompt_mode]
-                print(f"Using '{self.prompt_mode}' prompt style")
-
             print("✅ Agent ready!\n")
             return True
         except Exception as e:
@@ -130,31 +118,6 @@ class CloudSyncCLI:
         print(f"Verbose mode: {'ON' if self.verbose else 'OFF'}")
         # Reinitialize agent with new verbose setting
         self.initialize_agent()
-
-    def list_prompts(self):
-        """List available prompt variations."""
-        print("\n📝 Available Prompt Styles:")
-        print("-" * 40)
-        print(f"  default - Standard system prompt")
-        for name in PROMPT_VARIATIONS:
-            print(f"  {name} - {name.replace('_', ' ').title()} style")
-        print(f"\nCurrent: {self.prompt_mode}")
-
-    def switch_prompt(self, prompt_type: str):
-        """Switch to a different prompt variation."""
-        if prompt_type == "list":
-            self.list_prompts()
-        elif prompt_type == "default":
-            self.prompt_mode = "default"
-            self.initialize_agent()
-            print(f"✅ Switched to default prompt")
-        elif prompt_type in PROMPT_VARIATIONS:
-            self.prompt_mode = prompt_type
-            self.initialize_agent()
-            print(f"✅ Switched to '{prompt_type}' prompt style")
-        else:
-            print(f"❌ Unknown prompt type: {prompt_type}")
-            self.list_prompts()
 
     def test_sample_conversation(self, conv_id: str):
         """Test a specific sample conversation."""
@@ -272,7 +235,6 @@ class CloudSyncCLI:
             with open(filename, 'w') as f:
                 json.dump({
                     "timestamp": timestamp,
-                    "prompt_mode": self.prompt_mode,
                     "verbose": self.verbose,
                     "conversation": self.conversation_history
                 }, f, indent=2)
@@ -285,7 +247,6 @@ class CloudSyncCLI:
         print("\n📊 Current Status")
         print("-" * 40)
         print(f"Verbose Mode: {'ON' if self.verbose else 'OFF'}")
-        print(f"Prompt Style: {self.prompt_mode}")
         print(f"Customer Context: {self.current_customer or 'None'}")
         print(
             f"Conversation Length: {len(self.conversation_history)} messages")
@@ -368,11 +329,6 @@ class CloudSyncCLI:
                             self.set_customer(args)
                         else:
                             print("Usage: /customer <email> or /customer clear")
-                    elif command == '/prompt':
-                        if args:
-                            self.switch_prompt(args)
-                        else:
-                            self.list_prompts()
                     elif command == '/test':
                         if args:
                             self.test_sample_conversation(args)
