@@ -2,13 +2,7 @@
 
 ## Overview
 
-Build an evaluation system for a customer support agent for CloudSync, a file synchronization and backup service.
-
-**CloudSync Plans:**
-- Free: 5GB storage
-- Basic: $9/month, 100GB storage  
-- Professional: $29/month, 2TB storage
-- Enterprise: $99/month, unlimited storage
+Build an evaluation system for a customer support agent for CloudSync, a file synchronization and backup service. This is a real-world problem that you would be solving on the job, but generalized for the sake of the challenge.
 
 ## Setup
 
