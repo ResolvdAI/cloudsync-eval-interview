@@ -64,7 +64,7 @@ This is an **open-ended implementation challenge** - we want to see your enginee
 ### Deliverables
 
 1. **Code**: Evaluation system implementation (clean, documented, runnable)
-2. **Documentation** (`EVALUATION_REPORT.md`): 
+2. **Documentation** (`SOLUTION_NOTES.md`): 
    - How your evaluation system works
    - Baseline performance metrics
    - Trade-offs and design decisions
@@ -99,11 +99,12 @@ This is an **open-ended implementation challenge** - we want to see your enginee
 ## Submission
 
 Create a new private GitHub repo and add `samuel-casey` as a collaborator with:
-- All code (evaluation framework + any improvements)
-- `SOLUTION_NOTES.md` with your findings and assumptions
+- All code (evaluation framework + any improvements) in the `evals/` directory. Do not include any code or documentation outside of the `evals/` directory. This may not be realistic but it is for the sake of the challenge.
+- `evals/SOLUTION_NOTES.md` with your findings and assumptions
 - Any tests and test outputs demonstrating results
 - Instructions for running your evaluation
-- Use any tools you need to help you complete the challenge. This includes development tools, LLMs, etc. as well as any packages you want to install to help you complete the challenge. If you need to install a package, please add it to the requirements.txt file.
+  
+Use any tools you need to help you complete the challenge. This includes development tools, LLMs, etc. as well as any packages you want to install to help you complete the challenge. If you need to install a package, please add it to the requirements.txt file.
 
 ## Questions?
 
