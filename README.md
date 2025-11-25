@@ -30,7 +30,7 @@ python verify_setup.py
 # Try the agent
 python run_cli.py
 
-# Generate test data
+# Generate test data from sample conversations in src/data/sample_conversations.json
 python generate_test_data.py --max-queries 5
 ```
 
@@ -100,9 +100,10 @@ This is an **open-ended implementation challenge** - we want to see your enginee
 
 Create a new private GitHub repo and add `samuel-casey` as a collaborator with:
 - All code (evaluation framework + any improvements)
-- `EVALUATION_REPORT.md` with your findings and assumptions
-- Any test outputs demonstrating results
+- `SOLUTION_NOTES.md` with your findings and assumptions
+- Any tests and test outputs demonstrating results
 - Instructions for running your evaluation
+- Use any tools you need to help you complete the challenge. This includes development tools, LLMs, etc. as well as any packages you want to install to help you complete the challenge. If you need to install a package, please add it to the requirements.txt file.
 
 ## Questions?
 
