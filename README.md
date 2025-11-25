@@ -73,7 +73,7 @@ This is an **open-ended implementation challenge** - we want to see your enginee
 
 ## Evaluation Criteria
 
-### Technical Quality (40%)
+### Technical Quality (35%)
 - **Eval design:** Are your metrics meaningful? Do they actually measure quality?
 - **Code quality:** Clean, well-structured, properly handles edge cases
 - **Reproducibility:** Can we run your evaluation and see the same results?
@@ -83,10 +83,15 @@ This is an **open-ended implementation challenge** - we want to see your enginee
 - **Improvement quality:** Are your improvements well-targeted and effective?
 - **Trade-off awareness:** Do you understand the costs/benefits of your choices?
 
-### Communication (30%)
+### Communication (25%)
 - **Documentation:** Clear explanation of your approach and findings
 - **Metrics presentation:** Easy to understand performance results
 - **Decision rationale:** Why did you focus on X vs Y?
+
+### Development Practices (10%)
+- **Git hygiene:** Clear, logical commit messages and history
+- **Incremental progress:** Commits show your work progression
+- **Code organization:** Sensible file structure and separation of concerns
 
 ## Constraints
 
@@ -105,6 +110,8 @@ Create a new private GitHub repo and add `samuel-casey` as a collaborator with:
 - Instructions for running your evaluation
   
 Use any tools you need to help you complete the challenge. This includes development tools, LLMs, etc. as well as any packages you want to install to help you complete the challenge. If you need to install a package, please add it to the requirements.txt file.
+
+**Note on Git Practices:** We'll review your commit history as part of the evaluation. Use clear commit messages and make incremental commits as you work through the challenge. Your git history should tell the story of your development process.
 
 ## Questions?
 
