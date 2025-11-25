@@ -1,83 +1,113 @@
-# CloudSync Customer Support Agent
+# AI Agent Evaluation System - Take-Home Challenge
 
 ## Overview
 
-Customer support agent for CloudSync, a file synchronization and backup service. Built using LlamaIndex and Anthropic Claude.
+Build an evaluation system for a customer support agent for CloudSync, a file synchronization and backup service.
 
-## Repository Structure
-
-```
-├── src/
-│   ├── agent/
-│   │   ├── core.py          # Main agent implementation
-│   │   ├── tools.py         # Custom tools
-│   │   └── prompts.py       # System prompts
-│   ├── knowledge_base/
-│   │   └── documents/       # Product documentation
-│   └── data/
-│       └── sample_conversations.json  # Sample queries
-├── tests/
-│   └── test_agent.py        # Basic tests
-├── config/
-│   └── settings.py          # Configuration
-├── run_cli.py               # Interactive testing
-├── generate_test_data.py    # Batch testing
-└── example_usage.py         # Usage examples
-```
+**CloudSync Plans:**
+- Free: 5GB storage
+- Basic: $9/month, 100GB storage  
+- Professional: $29/month, 2TB storage
+- Enterprise: $99/month, unlimited storage
 
 ## Setup
 
 ```bash
-# Create virtual environment
+# Create and activate virtual environment
 python -m venv venv
 source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Set API key
-export ANTHROPIC_API_KEY="your-key-here"
-```
+# Set API keys
+export ANTHROPIC_API_KEY="your-key"
+# Optional: export OPENAI_API_KEY="your-key" for better embeddings
 
-## Usage
+# Verify setup
+python verify_setup.py
 
-### Interactive Testing
-```bash
+# Try the agent
 python run_cli.py
-```
 
-### Batch Testing
-```bash
+# Generate test data
 python generate_test_data.py --max-queries 5
 ```
 
-### Programmatic Usage
-```python
-from src.agent.core import CustomerSupportAgent
+## The Challenge
 
-agent = CustomerSupportAgent()
-response = agent.query("What's my billing status?")
-print(response)
-```
+In your system design interview, you discussed how to evaluate and monitor AI agents in production. Now implement a practical evaluation system that can:
 
-## Agent Capabilities
+1. **Measure** agent performance systematically
+2. **Identify** specific failure modes and weaknesses  
+3. **Enable** iterative improvements with confidence
 
-- Knowledge base search
-- Billing information lookup
-- Support ticket creation
-- System status checking
-- Account management guidance
+This is an **open-ended implementation challenge** - we want to see your engineering judgment on what matters most.
 
-## CloudSync Product Info
+### Core Requirements
 
-CloudSync is a file synchronization service with the following plans:
-- Free: 5GB storage
-- Basic: $9/month, 100GB storage
-- Professional: $29/month, 2TB storage
-- Enterprise: $99/month, unlimited storage
+**1. Evaluation Framework** (`src/evals/`)
+- Implement code that can evaluate agent responses
+- Choose appropriate metrics for different aspects (accuracy, helpfulness, tool usage, etc.)
+- Make it easy to run evaluations repeatedly
 
-## Requirements
+**2. Test Dataset**
+- Create or curate a set of test cases
+- Include diverse query types and difficulty levels
+- Document what each test case is evaluating
 
-- Python 3.9+
-- Anthropic API key
-- 2GB RAM minimum
+**3. Baseline Performance Analysis**
+- Run your evaluation on the current agent
+- Document performance: what works well, what doesn't
+- Identify specific failure modes
+
+### Deliverables
+
+1. **Code**: Evaluation system implementation (clean, documented, runnable)
+2. **Documentation** (`EVALUATION_REPORT.md`): 
+   - How your evaluation system works
+   - Baseline performance metrics
+   - Trade-offs and design decisions
+   - Any assumptions you made
+3. **Test Results**: Output from running your evaluation with clear evidence of findings
+
+## Evaluation Criteria
+
+### Technical Quality (40%)
+- **Eval design:** Are your metrics meaningful? Do they actually measure quality?
+- **Code quality:** Clean, well-structured, properly handles edge cases
+- **Reproducibility:** Can we run your evaluation and see the same results?
+
+### Problem-Solving (30%)
+- **Issue identification:** Did you find real weaknesses in the agent?
+- **Improvement quality:** Are your improvements well-targeted and effective?
+- **Trade-off awareness:** Do you understand the costs/benefits of your choices?
+
+### Communication (30%)
+- **Documentation:** Clear explanation of your approach and findings
+- **Metrics presentation:** Easy to understand performance results
+- **Decision rationale:** Why did you focus on X vs Y?
+
+## Constraints
+
+**Time:** 2-4 hours for a complete submission. We value focus and prioritization over exhaustive work. Use whatever AI tools you need.
+
+**Prioritize:** Practical over perfect. Working eval system > theoretically optimal but complex solution. Evidence over claims.
+
+**Out of Scope:** Production infrastructure, real-time dashboards, extensive ML Ops pipelines, massive test datasets (10-50 good test cases >> 1000 mediocre ones)
+
+## Submission
+
+Create a new private GitHub repo and add `samuel-casey` as a collaborator with:
+- All code (evaluation framework + any improvements)
+- `EVALUATION_REPORT.md` with your findings and assumptions
+- Any test outputs demonstrating results
+- Instructions for running your evaluation
+
+## Questions?
+
+If anything is unclear about the CloudSync product, agent capabilities, or the challenge itself, document your assumptions in your report and proceed. We're interested in seeing how you handle ambiguity.
+
+---
+
+Good luck! We're excited to see your approach to this problem.
