@@ -11,6 +11,7 @@ from .tools import (
 from config.settings import settings
 from llama_index.core.node_parser import SimpleNodeParser
 from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.llms.openai import OpenAI
 from llama_index.llms.anthropic import Anthropic
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.agent import ReActAgent
@@ -50,7 +51,7 @@ class CustomerSupportAgent:
     This agent handles customer inquiries by leveraging:
     - A knowledge base of documents (FAQs, troubleshooting guides, etc.)
     - Custom tools for billing, ticket creation, and system status
-    - Anthropic's Claude for natural language understanding
+    - LLM for natural language understanding (OpenAI by default, Anthropic supported)
     """
 
     def __init__(
@@ -76,7 +77,7 @@ class CustomerSupportAgent:
         logger.info(f"🚀 Initializing CustomerSupportAgent (verbose={verbose})")
 
         # Initialize LLM
-        logger.info("🤖 Setting up LLM (Anthropic Claude)...")
+        logger.info(f"🤖 Setting up LLM ({settings.llm_model})...")
         self._setup_llm()
 
         # Initialize knowledge base
@@ -98,18 +99,31 @@ class CustomerSupportAgent:
 
     def _setup_llm(self):
         """Configure the LLM and embedding models."""
-        # Set up Anthropic Claude
-        if not settings.anthropic_api_key:
-            raise ValueError(
-                "ANTHROPIC_API_KEY environment variable is not set")
-
         logger.debug(f"Using model: {settings.llm_model}")
-        self.llm = Anthropic(
-            model=settings.llm_model,
-            api_key=settings.anthropic_api_key,
-            temperature=settings.temperature,
-            max_tokens=settings.max_tokens,
-        )
+
+        # Determine provider from model name
+        model = settings.llm_model
+        if model.startswith("claude"):
+            if not settings.anthropic_api_key:
+                raise ValueError(
+                    "ANTHROPIC_API_KEY environment variable is not set")
+            self.llm = Anthropic(
+                model=model,
+                api_key=settings.anthropic_api_key,
+                temperature=settings.temperature,
+                max_tokens=settings.max_tokens,
+            )
+        else:
+            if not settings.openai_api_key:
+                raise ValueError(
+                    "OPENAI_API_KEY environment variable is not set")
+            self.llm = OpenAI(
+                model=model,
+                api_key=settings.openai_api_key,
+                temperature=settings.temperature,
+                max_tokens=settings.max_tokens,
+            )
+
         logger.debug(
             f"LLM configured with temperature={settings.temperature}, max_tokens={settings.max_tokens}")
 

@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = Field(None, env="OPENAI_API_KEY")
 
     # Model Configuration
-    llm_model: str = Field("claude-3-5-haiku-20241022", env="LLM_MODEL")
+    llm_model: str = Field("gpt-4o-mini", env="LLM_MODEL")
     embedding_model: str = Field(
         "text-embedding-3-small", env="EMBEDDING_MODEL")
     temperature: float = Field(0.3, env="TEMPERATURE")

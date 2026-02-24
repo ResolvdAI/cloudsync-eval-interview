@@ -14,9 +14,10 @@ source venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Set API keys
-export ANTHROPIC_API_KEY="your-key"
-# Optional: export OPENAI_API_KEY="your-key" for better embeddings
+# Configure API keys in .env
+# We provide an OpenAI key (capped at $10) so you don't have to use your own.
+# See the provided .env file — it's ready to use out of the box.
+# Optional: swap in your own key or set LLM_MODEL=claude-3-5-haiku-20241022 with an ANTHROPIC_API_KEY
 
 # Verify setup
 python verify_setup.py
