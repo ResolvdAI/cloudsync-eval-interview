@@ -1,0 +1,104 @@
+{
+  "name": "cloudsync_agent_baseline",
+  "description": "Baseline eval suite for CloudSync customer support agent",
+  "cases": [
+    {
+      "id": "billing_lookup_001",
+      "description": "Customer asks about their billing info - agent should use billing tool",
+      "tags": ["billing", "tool_use"],
+      "conversation_history": null,
+      "user_message": "What's my current subscription plan and when is my next billing date?",
+      "metadata": {
+        "customer_email": "john.doe@example.com"
+      },
+      "expected_actions": [
+        {
+          "tool_name": "lookup_billing",
+          "tool_args": { "customer_email": "john.doe@example.com" }
+        }
+      ],
+      "scoring": [
+        {
+          "field": "tools_called",
+          "method": "contains",
+          "expected": "lookup_billing",
+          "weight": 2.0
+        },
+        {
+          "field": "response",
+          "method": "contains",
+          "expected": "billing",
+          "weight": 0.5
+        },
+        {
+          "field": "response_quality",
+          "method": "llm_judge",
+          "rubric": "Response should include the customer's plan name and next billing date. It should not hallucinate billing details if the tool returned no data.",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "id": "followup_escalation_002",
+      "description": "Customer follows up on an unresolved sync issue - agent should escalate to ticket",
+      "tags": ["escalation", "tool_use", "multi_turn"],
+      "conversation_history": [
+        { "role": "user", "content": "My files aren't syncing on my Mac. I've tried restarting the app but it's still showing a red icon." },
+        { "role": "assistant", "content": "I'm sorry to hear that. Let me check the system status for you. All systems appear operational. Could you try clearing the local cache by going to Settings > Advanced > Clear Cache and then restarting the app?" }
+      ],
+      "user_message": "I already tried that and it didn't work. This is urgent, I need these files for a presentation in 2 hours.",
+      "metadata": {
+        "customer_email": "jane.smith@company.com"
+      },
+      "expected_actions": [
+        {
+          "tool_name": "create_ticket",
+          "tool_args": { "priority": "high" }
+        }
+      ],
+      "scoring": [
+        {
+          "field": "tools_called",
+          "method": "contains",
+          "expected": "create_ticket",
+          "weight": 2.0
+        },
+        {
+          "field": "response_quality",
+          "method": "llm_judge",
+          "rubric": "Agent should acknowledge urgency, not repeat already-tried troubleshooting steps, and escalate by creating a ticket with high or critical priority.",
+          "weight": 1.5
+        }
+      ]
+    },
+    {
+      "id": "system_status_003",
+      "description": "Customer reports widespread team outage - agent should check system status",
+      "tags": ["status", "tool_use"],
+      "conversation_history": null,
+      "user_message": "We're experiencing sync failures across our entire team of 50 users. Is there an outage?",
+      "metadata": {
+        "customer_email": "admin@enterprise.org"
+      },
+      "expected_actions": [
+        {
+          "tool_name": "check_system_status"
+        }
+      ],
+      "scoring": [
+        {
+          "field": "tools_called",
+          "method": "contains",
+          "expected": "check_system_status",
+          "weight": 2.0
+        },
+        {
+          "field": "response_quality",
+          "method": "llm_judge",
+          "rubric": "Response should reference actual system status results rather than guessing. If all systems are operational, it should suggest other causes and offer to escalate.",
+          "weight": 1.0
+        }
+      ]
+    }
+  ]
+}
