@@ -1,4 +1,4 @@
-# AI Agent Evaluation System - Take-Home Challenge
+# AI Agent Evaluation System - Pair programming challenge
 
 ## Overview
 
