@@ -34,7 +34,7 @@ python generate_test_data.py --max-queries 5
 In your system design interview, you discussed how to evaluate and monitor AI agents in production. Now implement a practical evaluation system that can:
 
 1. **Measure** agent performance systematically
-2. **Identify** specific failure modes and weaknesses  
+2. **Identify** specific failure modes and weaknesses
 3. **Enable** iterative improvements with confidence
 
 This is an **open-ended implementation challenge** - we want to see your engineering judgment on what matters most.
@@ -59,9 +59,25 @@ This is an **open-ended implementation challenge** - we want to see your enginee
 ### Deliverables
 
 1. **Code**: Evaluation system implementation (clean, documented, runnable)
-2. **Documentation** (`SOLUTION_NOTES.md`): 
+2. **Documentation** (`SOLUTION_NOTES.md`):
    - How your evaluation system works
    - Baseline performance metrics
    - Trade-offs and design decisions
    - Any assumptions you made
 3. **Test Results**: Output from running your evaluation with clear evidence of findings
+
+
+Notes
+- We need some metrics to evaluate the model response
+- We need a test set
+- LLM judge eval
+
+Metrics
+- Accuracy (is the response answering the question)
+- Tool calls (did the agent call the right tools, were the args correct)
+   - LLM judge based system for args
+- Consistency, run the agent n times and see if the response is consistent
+- Tool call accuracy
+- Tool response correctness
+- Number of tool calls
+- Latency

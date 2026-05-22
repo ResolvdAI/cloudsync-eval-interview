@@ -1,0 +1,901 @@
+{
+  "metadata": {
+    "created_at": "2026-05-22T09:49:11.184337",
+    "dataset_path": "tests/eval_dataset.json",
+    "total_cases": 30,
+    "successful": 30,
+    "failed": 0,
+    "elapsed_seconds": 162.1,
+    "agent_model": "gpt-4o-mini"
+  },
+  "response_metrics": {
+    "aggregate": {
+      "total_samples": 30,
+      "helpful_count": 19,
+      "not_helpful_count": 11,
+      "helpful_rate": 0.63,
+      "avg_latency": 5.4,
+      "max_latency": 23.57
+    },
+    "per_category": {
+      "tool_selection": {
+        "total_samples": 10,
+        "helpful_count": 4,
+        "not_helpful_count": 6,
+        "helpful_rate": 0.4,
+        "avg_latency": 4.24
+      },
+      "tool_arguments": {
+        "total_samples": 10,
+        "helpful_count": 8,
+        "not_helpful_count": 2,
+        "helpful_rate": 0.8,
+        "avg_latency": 5.64
+      },
+      "knowledge_base": {
+        "total_samples": 10,
+        "helpful_count": 7,
+        "not_helpful_count": 3,
+        "helpful_rate": 0.7,
+        "avg_latency": 6.33
+      }
+    },
+    "per_sample": {
+      "ts_001": {
+        "helpful": 1,
+        "reasoning": "The agent's response accurately addresses the customer's request by providing the billing status, current plan, next billing date, last payment details, and payment method. This information is consistent with the ground truth and gives the user the necessary details to understand their billing situation.",
+        "latency": 3.657115936279297
+      },
+      "ts_002": {
+        "helpful": 0,
+        "reasoning": "The agent's response does not provide specific uptime or response time metrics, nor does it detail any ongoing incidents, which are critical elements of the ground truth response. While it indicates that the service is operational, it lacks the comprehensive information needed for the customer to fully understand the service's status.",
+        "latency": 3.9562408924102783
+      },
+      "ts_003": {
+        "helpful": 1,
+        "reasoning": "The agent's response successfully addresses the customer's request by confirming that a support ticket has been created for the issue of corrupted files. It provides the ticket ID and an estimated response time, which aligns with the information expected in the ground truth response.",
+        "latency": 3.2320258617401123
+      },
+      "ts_004": {
+        "helpful": 1,
+        "reasoning": "The agent's response accurately lists all the platforms that CloudSync supports, which directly answers the customer's question. The information provided is consistent with the ground truth.",
+        "latency": 7.334398984909058
+      },
+      "ts_005": {
+        "helpful": 1,
+        "reasoning": "The agent's response addresses the user's query by asking how they can assist, which is consistent with the ground truth's intent to offer help. While it lacks the specific mention of 'CloudSync support,' it still provides a pathway for the customer to move forward.",
+        "latency": 1.077739953994751
+      },
+      "ts_006": {
+        "helpful": 0,
+        "reasoning": "The agent's response does not address the user's specific request to check the status of CloudSync. Instead, it mentions a support ticket for 'ongoing authentication issues' without confirming whether CloudSync is down or operational. This could lead to confusion, as the user may not be experiencing authentication issues specifically.",
+        "latency": 7.905735015869141
+      },
+      "ts_007": {
+        "helpful": 0,
+        "reasoning": "The agent's response only provided the cost of the Professional plan but lacked critical information about the plan's features, such as storage, file size limit, sharing capabilities, version history, and support details, which are included in the ground truth.",
+        "latency": 3.9711101055145264
+      },
+      "ts_008": {
+        "helpful": 0,
+        "reasoning": "The agent's response does not address the customer's request for help with their account issue. Instead of asking for more details about the specific problem, the agent created a support ticket without understanding the nature of the issue, which is not aligned with the ideal response.",
+        "latency": 3.18007493019104
+      },
+      "ts_009": {
+        "helpful": 0,
+        "reasoning": "The agent's response lacks critical information such as the billing amount, next billing date, and the status of the plan, which are included in the ground truth. While it does provide the plan type and file size limit, it does not fully address the user's request for billing information.",
+        "latency": 6.510515928268433
+      },
+      "ts_010": {
+        "helpful": 0,
+        "reasoning": "The agent's response does not address the user's question about the weather in San Francisco and instead redirects the customer to external sources without offering any assistance related to CloudSync, which is what the ground truth suggests.",
+        "latency": 1.5763568878173828
+      },
+      "ta_001": {
+        "helpful": 1,
+        "reasoning": "The agent's response accurately provides the customer's billing details, addressing the user's request and including all relevant information such as plan, status, monthly amount, next billing date, payment method, and last payment. This aligns with the ground truth requirements.",
+        "latency": 3.4777958393096924
+      },
+      "ta_002": {
+        "helpful": 1,
+        "reasoning": "The agent's response accurately provides the billing details for customer cust_1002, including the plan, status, monthly amount, and next billing date, which directly addresses the customer's request.",
+        "latency": 3.1790640354156494
+      },
+      "ta_003": {
+        "helpful": 1,
+        "reasoning": "The agent's response accurately answers the customer's question about their current subscription plan, providing specific details about the plan name, account status, monthly charge, and next billing date, which aligns with the information expected in the ground truth.",
+        "latency": 3.5844433307647705
+      },
+      "ta_004": {
+        "helpful": 0,
+        "reasoning": "The agent's response does not adequately address the urgency of the customer's situation. The estimated response time of 4 hours is not aligned with the customer's immediate need for assistance within 2 hours, and it fails to prioritize the issue as critical.",
+        "latency": 23.569589853286743
+      },
+      "ta_005": {
+        "helpful": 1,
+        "reasoning": "The agent's response accurately addresses the customer's request by confirming the creation of a low priority feature request ticket for the dark mode option, provides the ticket ID, and informs the customer about the expected response time, which aligns with the ground truth.",
+        "latency": 4.61419415473938
+      },
+      "ta_006": {
+        "helpful": 1,
+        "reasoning": "The agent's response effectively addresses the customer's request by confirming that a support ticket has been created to investigate the duplicate charge. It provides the ticket ID and an estimated response time, which aligns with the information expected in the ground truth response.",
+        "latency": 5.752799034118652
+      },
+      "ta_007": {
+        "helpful": 1,
+        "reasoning": "The agent's response directly answers the customer's question about the operational status of the CloudSync API, providing specific uptime information and mentioning potential issues in the system that do not affect the API. This aligns well with the ground truth requirements.",
+        "latency": 3.759495973587036
+      },
+      "ta_008": {
+        "helpful": 1,
+        "reasoning": "The agent's response directly addresses the customer's request to look up billing information by asking for the necessary details (customer email or customer ID) to proceed, which is consistent with the ground truth.",
+        "latency": 1.2391741275787354
+      },
+      "ta_009": {
+        "helpful": 0,
+        "reasoning": "The agent's response did not address the user's issue regarding the file size limit. It failed to explain that the 60GB file exceeds the 50GB limit of the Professional plan, which is the reason for the upload failure. Additionally, it did not provide information about upgrade options or workarounds, which are critical for the user to move forward.",
+        "latency": 3.9712860584259033
+      },
+      "ta_010": {
+        "helpful": 1,
+        "reasoning": "The agent's response accurately informs the customer that no billing information is available for the provided email address and indicates that the customer is not found in the system. This addresses the user's request and provides clear information, allowing the customer to understand the situation.",
+        "latency": 3.226242780685425
+      },
+      "kb_001": {
+        "helpful": 0,
+        "reasoning": "The agent's response only provides the storage amount but lacks critical information such as the monthly and annual pricing, file size limit, version history, and support details, which are included in the ground truth.",
+        "latency": 3.987391233444214
+      },
+      "kb_002": {
+        "helpful": 1,
+        "reasoning": "The agent's response accurately provides the file size limits for each plan, directly addressing the customer's question and offering the necessary information to move forward.",
+        "latency": 5.0913472175598145
+      },
+      "kb_003": {
+        "helpful": 1,
+        "reasoning": "The agent's response accurately explains the meaning of Error 507, provides correct information about the storage quota being exceeded, and offers actionable steps for the customer to resolve the issue.",
+        "latency": 4.6036601066589355
+      },
+      "kb_004": {
+        "helpful": 1,
+        "reasoning": "The agent's response effectively addresses the user's question about syncing issues by providing a clear checklist of troubleshooting steps. The information is accurate and aligns well with the ground truth, guiding the user on what to check to resolve their issue.",
+        "latency": 8.629029273986816
+      },
+      "kb_005": {
+        "helpful": 1,
+        "reasoning": "The agent's response directly addresses the customer's question about the security of CloudSync and provides accurate information regarding the encryption methods used, as well as additional security features. This aligns well with the ground truth response.",
+        "latency": 5.91619873046875
+      },
+      "kb_006": {
+        "helpful": 1,
+        "reasoning": "The agent's response accurately addresses the customer's question about what happens to their files upon cancellation, providing clear information about file accessibility and the timeline for downloading and potential deletion.",
+        "latency": 4.933953046798706
+      },
+      "kb_007": {
+        "helpful": 0,
+        "reasoning": "The agent's response only addresses the discount for university students but fails to mention other available discounts, which are part of the ideal response. This omission means the response is not as helpful as it could be.",
+        "latency": 9.835054636001587
+      },
+      "kb_008": {
+        "helpful": 0,
+        "reasoning": "The agent's response does not provide specific information about CloudSync's integration with Salesforce, nor does it guide the customer on how to find the information, such as contacting the sales team or checking the website. It lacks critical details that the ground truth covers.",
+        "latency": 4.266554832458496
+      },
+      "kb_009": {
+        "helpful": 1,
+        "reasoning": "The agent's response effectively addresses the user's question by providing a clear and accurate list of troubleshooting steps for the CloudSync app crashing on an Android phone. The steps are consistent with the ground truth and give the user actionable information to resolve the issue.",
+        "latency": 8.487459659576416
+      },
+      "kb_010": {
+        "helpful": 1,
+        "reasoning": "The agent's response accurately addresses the customer's question about the refund policy by stating the 30-day money-back guarantee and clarifying the access period after cancellation. While it lacks some details present in the ground truth, it still provides sufficient information for the customer to understand the refund policy.",
+        "latency": 7.57930326461792
+      }
+    }
+  },
+  "tool_metrics": {
+    "aggregate": {
+      "total_samples": 30,
+      "tool_selection_accuracy": 0.93,
+      "tool_selection_correct": 28,
+      "tool_selection_incorrect": 2,
+      "avg_tool_args_score": 0.96
+    },
+    "per_category": {
+      "tool_selection": {
+        "total_samples": 10,
+        "tool_selection_accuracy": 0.9,
+        "avg_tool_args_score": 1.0
+      },
+      "tool_arguments": {
+        "total_samples": 10,
+        "tool_selection_accuracy": 0.9,
+        "avg_tool_args_score": 0.88
+      },
+      "knowledge_base": {
+        "total_samples": 10,
+        "tool_selection_accuracy": 1.0,
+        "avg_tool_args_score": 1.0
+      }
+    },
+    "per_sample": {
+      "ts_001": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "lookup_billing"
+          ],
+          "actual": [
+            "lookup_billing"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {
+            "lookup_billing": {
+              "score": 1.0,
+              "args": {
+                "customer_email": {
+                  "score": 1.0,
+                  "expected": "john.doe@example.com",
+                  "actual": "john.doe@example.com",
+                  "passed": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "ts_002": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "check_system_status"
+          ],
+          "actual": [
+            "check_system_status"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "ts_003": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "create_ticket"
+          ],
+          "actual": [
+            "create_ticket"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {
+            "create_ticket": {
+              "score": 1.0,
+              "args": {
+                "category": {
+                  "score": 1.0,
+                  "expected": "technical",
+                  "actual": "technical",
+                  "passed": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "ts_004": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "search_knowledge_base"
+          ],
+          "actual": [
+            "search_knowledge_base"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "ts_005": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [],
+          "actual": [],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "ts_006": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "check_system_status",
+            "create_ticket"
+          ],
+          "actual": [
+            "check_system_status",
+            "create_ticket"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "ts_007": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "search_knowledge_base"
+          ],
+          "actual": [
+            "search_knowledge_base"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "ts_008": {
+        "tool_selection": {
+          "correct": false,
+          "expected": [
+            "search_knowledge_base"
+          ],
+          "actual": [
+            "create_ticket"
+          ],
+          "missing": [
+            "search_knowledge_base"
+          ],
+          "extra": [
+            "create_ticket"
+          ]
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "ts_009": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "lookup_billing",
+            "search_knowledge_base"
+          ],
+          "actual": [
+            "lookup_billing",
+            "search_knowledge_base"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {
+            "lookup_billing": {
+              "score": 1.0,
+              "args": {
+                "customer_email": {
+                  "score": 1.0,
+                  "expected": "jane.smith@company.com",
+                  "actual": "jane.smith@company.com",
+                  "passed": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "ts_010": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [],
+          "actual": [],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "ta_001": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "lookup_billing"
+          ],
+          "actual": [
+            "lookup_billing"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {
+            "lookup_billing": {
+              "score": 1.0,
+              "args": {
+                "customer_email": {
+                  "score": 1.0,
+                  "expected": "support@startup.io",
+                  "actual": "support@startup.io",
+                  "passed": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "ta_002": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "lookup_billing"
+          ],
+          "actual": [
+            "lookup_billing"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {
+            "lookup_billing": {
+              "score": 1.0,
+              "args": {
+                "customer_id": {
+                  "score": 1.0,
+                  "expected": "cust_1002",
+                  "actual": "cust_1002",
+                  "passed": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "ta_003": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "lookup_billing"
+          ],
+          "actual": [
+            "lookup_billing"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {
+            "lookup_billing": {
+              "score": 1.0,
+              "args": {
+                "customer_email": {
+                  "score": 1.0,
+                  "expected": "admin@enterprise.org",
+                  "actual": "admin@enterprise.org",
+                  "passed": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "ta_004": {
+        "tool_selection": {
+          "correct": false,
+          "expected": [
+            "create_ticket"
+          ],
+          "actual": [
+            "check_system_status",
+            "create_ticket"
+          ],
+          "missing": [],
+          "extra": [
+            "check_system_status"
+          ]
+        },
+        "tool_args": {
+          "score": 0.26,
+          "details": {
+            "create_ticket": {
+              "score": 0.26,
+              "args": {
+                "priority": {
+                  "score": 0.17,
+                  "expected": "critical",
+                  "actual": "high",
+                  "passed": false
+                },
+                "category": {
+                  "score": 0.35,
+                  "expected": "technical",
+                  "actual": "service outage",
+                  "passed": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "ta_005": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "create_ticket"
+          ],
+          "actual": [
+            "create_ticket"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 0.97,
+          "details": {
+            "create_ticket": {
+              "score": 0.97,
+              "args": {
+                "priority": {
+                  "score": 1.0,
+                  "expected": "low",
+                  "actual": "low",
+                  "passed": true
+                },
+                "category": {
+                  "score": 0.93,
+                  "expected": "feature_request",
+                  "actual": "feature request",
+                  "passed": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "ta_006": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "create_ticket"
+          ],
+          "actual": [
+            "create_ticket"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {
+            "create_ticket": {
+              "score": 1.0,
+              "args": {
+                "category": {
+                  "score": 1.0,
+                  "expected": "billing",
+                  "actual": "billing",
+                  "passed": true
+                },
+                "customer_email": {
+                  "score": 1.0,
+                  "expected": "jane.smith@company.com",
+                  "actual": "jane.smith@company.com",
+                  "passed": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "ta_007": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "check_system_status"
+          ],
+          "actual": [
+            "check_system_status"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {
+            "check_system_status": {
+              "score": 1.0,
+              "args": {
+                "service": {
+                  "score": 1.0,
+                  "expected": "api",
+                  "actual": "API",
+                  "passed": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "ta_008": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [],
+          "actual": [],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "ta_009": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "create_ticket"
+          ],
+          "actual": [
+            "create_ticket"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 0.57,
+          "details": {
+            "create_ticket": {
+              "score": 0.57,
+              "args": {
+                "category": {
+                  "score": 0.13,
+                  "expected": "bug_report",
+                  "actual": "other",
+                  "passed": false
+                },
+                "customer_email": {
+                  "score": 1.0,
+                  "expected": "user@test.com",
+                  "actual": "user@test.com",
+                  "passed": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "ta_010": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "lookup_billing"
+          ],
+          "actual": [
+            "lookup_billing"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {
+            "lookup_billing": {
+              "score": 1.0,
+              "args": {
+                "customer_email": {
+                  "score": 1.0,
+                  "expected": "unknown_user@nowhere.com",
+                  "actual": "unknown_user@nowhere.com",
+                  "passed": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "kb_001": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "search_knowledge_base"
+          ],
+          "actual": [
+            "search_knowledge_base"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "kb_002": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "search_knowledge_base"
+          ],
+          "actual": [
+            "search_knowledge_base"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "kb_003": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "search_knowledge_base"
+          ],
+          "actual": [
+            "search_knowledge_base"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "kb_004": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "search_knowledge_base"
+          ],
+          "actual": [
+            "search_knowledge_base"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "kb_005": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "search_knowledge_base"
+          ],
+          "actual": [
+            "search_knowledge_base"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "kb_006": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "search_knowledge_base"
+          ],
+          "actual": [
+            "search_knowledge_base"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "kb_007": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "search_knowledge_base"
+          ],
+          "actual": [
+            "search_knowledge_base"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "kb_008": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "search_knowledge_base"
+          ],
+          "actual": [
+            "search_knowledge_base"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "kb_009": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "search_knowledge_base"
+          ],
+          "actual": [
+            "search_knowledge_base"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      },
+      "kb_010": {
+        "tool_selection": {
+          "correct": true,
+          "expected": [
+            "search_knowledge_base"
+          ],
+          "actual": [
+            "search_knowledge_base"
+          ],
+          "missing": [],
+          "extra": []
+        },
+        "tool_args": {
+          "score": 1.0,
+          "details": {}
+        }
+      }
+    }
+  }
+}

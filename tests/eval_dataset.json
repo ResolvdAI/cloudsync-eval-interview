@@ -1,0 +1,490 @@
+{
+  "version": "1.0",
+  "description": "Evaluation dataset for CloudSync Customer Support Agent",
+  "categories": {
+    "tool_selection": "Does the agent pick the correct tool(s) for the query?",
+    "tool_arguments": "Does the agent extract and pass correct parameters to tools?",
+    "knowledge_base": "Does the agent retrieve accurate info from the knowledge base?"
+  },
+  "test_cases": [
+    {
+      "id": "ts_001",
+      "category": "tool_selection",
+      "subcategory": "single_tool_billing",
+      "description": "Direct billing lookup by email",
+      "query": "Can you check the billing status for john.doe@example.com?",
+      "customer_email": "john.doe@example.com",
+      "expected_tools": ["lookup_billing"],
+      "expected_tool_args": {
+        "lookup_billing": {
+          "customer_email": "john.doe@example.com"
+        }
+      },
+      "ground_truth": "Your current plan is {plan} with a status of {status}. You are being charged ${amount}/month, and your next billing date is {next_billing_date}. Your payment method on file is {payment_method}.",
+      "expected_response_contains": ["plan", "billing"],
+      "expected_response_excludes": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "ts_002",
+      "category": "tool_selection",
+      "subcategory": "single_tool_status",
+      "description": "System status check",
+      "query": "Is the CloudSync file sync service working right now?",
+      "customer_email": null,
+      "expected_tools": ["check_system_status"],
+      "expected_tool_args": {},
+      "ground_truth": "The File Synchronization service is currently {status} with {uptime}% uptime and a response time of {response_time_ms}ms. {If there are any ongoing incidents, include details here. If all is well, confirm everything is operating normally.}",
+      "expected_response_contains": ["status"],
+      "expected_response_excludes": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "ts_003",
+      "category": "tool_selection",
+      "subcategory": "single_tool_ticket",
+      "description": "Explicit ticket creation request",
+      "query": "I need to open a support ticket. My files have been corrupted after the last sync and I need help recovering them.",
+      "customer_email": "jane.smith@company.com",
+      "expected_tools": ["create_ticket"],
+      "expected_tool_args": {
+        "create_ticket": {
+          "category": "technical"
+        }
+      },
+      "ground_truth": "I've created support ticket {ticket_id} for your file corruption issue. Our team will investigate the corrupted files from your last sync and help with recovery. You can expect a response within {estimated_response_time}.",
+      "expected_response_contains": ["ticket", "TICKET-"],
+      "expected_response_excludes": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "ts_004",
+      "category": "tool_selection",
+      "subcategory": "single_tool_knowledge_base",
+      "description": "Question answerable from docs, no tools needed beyond KB",
+      "query": "What platforms does CloudSync support?",
+      "customer_email": null,
+      "expected_tools": ["search_knowledge_base"],
+      "expected_tool_args": {},
+      "ground_truth": "CloudSync is available on Windows (10 and 11), macOS (10.15 and later), Linux (Ubuntu, Fedora, Debian), iOS (14.0 and later), Android (8.0 and later), and via web browser.",
+      "expected_response_contains": ["Windows", "macOS", "Linux", "iOS", "Android"],
+      "expected_response_excludes": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "ts_005",
+      "category": "tool_selection",
+      "subcategory": "no_tool",
+      "description": "Greeting that should not trigger any tool",
+      "query": "Hi there!",
+      "customer_email": null,
+      "expected_tools": [],
+      "expected_tool_args": {},
+      "ground_truth": "Hello! Welcome to CloudSync support. How can I help you today?",
+      "expected_response_contains": [],
+      "expected_response_excludes": ["TICKET-", "error"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "ts_006",
+      "category": "tool_selection",
+      "subcategory": "multi_tool",
+      "description": "Query requiring status check then conditional ticket creation",
+      "query": "I think CloudSync is down. Can you check and if there's an issue, create a ticket for me?",
+      "customer_email": "user@test.com",
+      "expected_tools": ["check_system_status", "create_ticket"],
+      "expected_tool_args": {},
+      "ground_truth": "I've checked the current system status. {If issues are detected: 'It looks like {service} is experiencing {status}. I've created ticket {ticket_id} to track this for you. You can expect an update within {estimated_response_time}.' If all operational: 'All CloudSync services are currently operational. Everything looks normal on our end. If you're still experiencing issues, could you describe what's happening so I can help troubleshoot?'}",
+      "expected_response_contains": ["status"],
+      "expected_response_excludes": [],
+      "difficulty": "hard"
+    },
+    {
+      "id": "ts_007",
+      "category": "tool_selection",
+      "subcategory": "ambiguous_billing_vs_kb",
+      "description": "Pricing question should use KB, not billing tool",
+      "query": "How much does the Professional plan cost?",
+      "customer_email": null,
+      "expected_tools": ["search_knowledge_base"],
+      "expected_tool_args": {},
+      "ground_truth": "The Professional plan costs $29/month or $290/year (saving 17% with annual billing). It includes 2TB of storage, a 50GB file size limit, sharing with up to 50 people, 180-day version history, and priority email support with 24-hour response time.",
+      "expected_response_contains": ["29"],
+      "expected_response_excludes": [],
+      "difficulty": "medium"
+    },
+    {
+      "id": "ts_008",
+      "category": "tool_selection",
+      "subcategory": "ambiguous_needs_clarification",
+      "description": "Vague query that could be billing or technical - agent should ask or use KB",
+      "query": "I'm having trouble with my account.",
+      "customer_email": null,
+      "expected_tools": ["search_knowledge_base"],
+      "expected_tool_args": {},
+      "ground_truth": "I'd be happy to help with your account issue. Could you tell me a bit more about what's going on? For example, are you having trouble logging in, experiencing a billing issue, or running into something else?",
+      "expected_response_contains": [],
+      "expected_response_excludes": ["TICKET-"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "ts_009",
+      "category": "tool_selection",
+      "subcategory": "multi_tool_billing_and_kb",
+      "description": "Customer asking about their billing and a general product question",
+      "query": "Can you look up my billing info and also tell me what the file size limit is for my plan?",
+      "customer_email": "jane.smith@company.com",
+      "expected_tools": ["lookup_billing", "search_knowledge_base"],
+      "expected_tool_args": {
+        "lookup_billing": {
+          "customer_email": "jane.smith@company.com"
+        }
+      },
+      "ground_truth": "Here's your billing information: you're on the {plan} plan at ${amount}/month, with a status of {status}. Your next billing date is {next_billing_date}. As for the file size limit on your plan, {plan-specific limit from docs: Free=100MB, Basic=5GB, Professional=50GB, Enterprise=no limit}.",
+      "expected_response_contains": ["plan"],
+      "expected_response_excludes": [],
+      "difficulty": "hard"
+    },
+    {
+      "id": "ts_010",
+      "category": "tool_selection",
+      "subcategory": "out_of_scope",
+      "description": "Off-topic question the agent should handle without tools",
+      "query": "What's the weather like in San Francisco today?",
+      "customer_email": null,
+      "expected_tools": [],
+      "expected_tool_args": {},
+      "ground_truth": "I'm a CloudSync customer support assistant, so I'm not able to help with weather information. Is there anything I can help you with regarding CloudSync?",
+      "expected_response_contains": [],
+      "expected_response_excludes": ["TICKET-", "operational"],
+      "difficulty": "easy"
+    },
+
+    {
+      "id": "ta_001",
+      "category": "tool_arguments",
+      "subcategory": "billing_email_extraction",
+      "description": "Extract email from natural language for billing lookup",
+      "query": "My email is support@startup.io, can you pull up my billing details?",
+      "customer_email": null,
+      "expected_tools": ["lookup_billing"],
+      "expected_tool_args": {
+        "lookup_billing": {
+          "customer_email": "support@startup.io"
+        }
+      },
+      "ground_truth": "Here are your billing details for support@startup.io: you're on the {plan} plan with a status of {status}. Your monthly charge is ${amount}, and your next billing date is {next_billing_date}. Your payment method on file is {payment_method}.",
+      "expected_response_contains": ["billing"],
+      "expected_response_excludes": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "ta_002",
+      "category": "tool_arguments",
+      "subcategory": "billing_id_extraction",
+      "description": "Extract customer ID for billing lookup",
+      "query": "Look up billing for customer cust_1002.",
+      "customer_email": null,
+      "expected_tools": ["lookup_billing"],
+      "expected_tool_args": {
+        "lookup_billing": {
+          "customer_id": "cust_1002"
+        }
+      },
+      "ground_truth": "Here are the billing details for customer cust_1002: the account is on the {plan} plan with a status of {status}. The monthly charge is ${amount}, and the next billing date is {next_billing_date}.",
+      "expected_response_contains": [],
+      "expected_response_excludes": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "ta_003",
+      "category": "tool_arguments",
+      "subcategory": "billing_from_metadata",
+      "description": "Use email from metadata when not in query text",
+      "query": "What's my current subscription plan?",
+      "customer_email": "admin@enterprise.org",
+      "expected_tools": ["lookup_billing"],
+      "expected_tool_args": {
+        "lookup_billing": {
+          "customer_email": "admin@enterprise.org"
+        }
+      },
+      "ground_truth": "Your current subscription plan is {plan} and your account status is {status}. You're being charged ${amount}/month, with your next billing date on {next_billing_date}.",
+      "expected_response_contains": ["plan"],
+      "expected_response_excludes": [],
+      "difficulty": "medium"
+    },
+    {
+      "id": "ta_004",
+      "category": "tool_arguments",
+      "subcategory": "ticket_priority_implicit",
+      "description": "Infer high priority from urgency language",
+      "query": "This is extremely urgent - our entire team cannot access any files and we have a client deadline in 2 hours. We need help NOW.",
+      "customer_email": "admin@enterprise.org",
+      "expected_tools": ["create_ticket"],
+      "expected_tool_args": {
+        "create_ticket": {
+          "priority": "critical",
+          "category": "technical"
+        }
+      },
+      "ground_truth": "I've created a critical-priority ticket {ticket_id} for your team's file access issue. Given the urgency, our team will respond within 1 hour. We understand you have a client deadline and will treat this with the highest priority.",
+      "expected_response_contains": ["ticket", "TICKET-"],
+      "expected_response_excludes": [],
+      "difficulty": "medium"
+    },
+    {
+      "id": "ta_005",
+      "category": "tool_arguments",
+      "subcategory": "ticket_priority_explicit",
+      "description": "Use explicitly stated priority and category",
+      "query": "Please create a low priority feature request ticket: I'd like to see a dark mode option in the desktop app.",
+      "customer_email": null,
+      "expected_tools": ["create_ticket"],
+      "expected_tool_args": {
+        "create_ticket": {
+          "priority": "low",
+          "category": "feature_request"
+        }
+      },
+      "ground_truth": "I've created feature request ticket {ticket_id} for adding a dark mode option to the desktop app. This has been filed as low priority, and you can expect a response within 48 hours. Thanks for the suggestion!",
+      "expected_response_contains": ["ticket", "TICKET-"],
+      "expected_response_excludes": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "ta_006",
+      "category": "tool_arguments",
+      "subcategory": "ticket_category_billing",
+      "description": "Correctly categorize a billing issue ticket",
+      "query": "I was charged twice this month for my Professional plan. Please create a ticket to investigate.",
+      "customer_email": "jane.smith@company.com",
+      "expected_tools": ["create_ticket"],
+      "expected_tool_args": {
+        "create_ticket": {
+          "category": "billing",
+          "customer_email": "jane.smith@company.com"
+        }
+      },
+      "ground_truth": "I've created billing ticket {ticket_id} to investigate the duplicate charge on your Professional plan. Our billing team will review the two charges and process a refund if a duplicate is confirmed. You can expect a response within {estimated_response_time}.",
+      "expected_response_contains": ["ticket"],
+      "expected_response_excludes": [],
+      "difficulty": "medium"
+    },
+    {
+      "id": "ta_007",
+      "category": "tool_arguments",
+      "subcategory": "status_specific_service",
+      "description": "Check status of a specific service, not all services",
+      "query": "Is the CloudSync API currently operational?",
+      "customer_email": null,
+      "expected_tools": ["check_system_status"],
+      "expected_tool_args": {
+        "check_system_status": {
+          "service": "api"
+        }
+      },
+      "ground_truth": "The CloudSync API is currently {status} with {uptime}% uptime and an average response time of {response_time_ms}ms. {If there are incidents, describe them. Otherwise confirm it's running normally.}",
+      "expected_response_contains": ["API"],
+      "expected_response_excludes": [],
+      "difficulty": "medium"
+    },
+    {
+      "id": "ta_008",
+      "category": "tool_arguments",
+      "subcategory": "missing_required_info",
+      "description": "No customer identifier provided - should ask, not hallucinate",
+      "query": "Can you look up my billing information?",
+      "customer_email": null,
+      "expected_tools": [],
+      "expected_tool_args": {},
+      "ground_truth": "I'd be happy to look up your billing information. Could you provide your account email address or customer ID so I can pull up your details?",
+      "expected_response_contains": ["email"],
+      "expected_response_excludes": [],
+      "difficulty": "medium",
+      "notes": "Agent should ask for email or customer ID rather than calling the tool without arguments"
+    },
+    {
+      "id": "ta_009",
+      "category": "tool_arguments",
+      "subcategory": "ticket_subject_extraction",
+      "description": "Agent should create a clear subject from a rambling description",
+      "query": "So basically what happened is I was trying to upload a really big video file, like 60 gigs, and it kept failing over and over, and I'm on the Professional plan which should allow up to 50GB so I don't know what's going on, and then I tried smaller files and those worked fine, can you make a ticket for this?",
+      "customer_email": "user@test.com",
+      "expected_tools": ["create_ticket"],
+      "expected_tool_args": {
+        "create_ticket": {
+          "category": "bug_report",
+          "customer_email": "user@test.com"
+        }
+      },
+      "ground_truth": "Just a heads up — the Professional plan has a 50GB file size limit, and your file is 60GB, which is why the upload is failing. This isn't a bug but a plan limitation. If you need to upload files larger than 50GB, the Enterprise plan has no file size limit. I've created ticket {ticket_id} in case you'd like our team to look into upgrade options or help with a workaround.",
+      "expected_response_contains": ["ticket", "50GB"],
+      "expected_response_excludes": [],
+      "difficulty": "hard",
+      "notes": "The 60GB file exceeds the Professional plan's 50GB limit - agent ideally points this out in addition to creating the ticket"
+    },
+    {
+      "id": "ta_010",
+      "category": "tool_arguments",
+      "subcategory": "billing_unknown_customer",
+      "description": "Billing lookup for a customer not in the mock data",
+      "query": "Look up billing for unknown_user@nowhere.com",
+      "customer_email": null,
+      "expected_tools": ["lookup_billing"],
+      "expected_tool_args": {
+        "lookup_billing": {
+          "customer_email": "unknown_user@nowhere.com"
+        }
+      },
+      "ground_truth": "I wasn't able to find an account associated with unknown_user@nowhere.com. Could you double-check the email address? If you have a customer ID, I can try looking it up that way instead.",
+      "expected_response_contains": ["not found"],
+      "expected_response_excludes": [],
+      "difficulty": "easy",
+      "notes": "Agent should relay the 'not found' result gracefully, not hallucinate billing data"
+    },
+
+    {
+      "id": "kb_001",
+      "category": "knowledge_base",
+      "subcategory": "pricing_factual",
+      "description": "Specific pricing question with exact answer in docs",
+      "query": "How much storage do I get on the Basic plan?",
+      "customer_email": null,
+      "expected_tools": ["search_knowledge_base"],
+      "expected_tool_args": {},
+      "ground_truth": "The Basic plan includes 100GB of storage for $9/month (or $90/year with annual billing). It also comes with a 5GB file size limit, 90-day version history, and email support with a 48-hour response time.",
+      "expected_response_contains": ["100GB"],
+      "expected_response_excludes": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "kb_002",
+      "category": "knowledge_base",
+      "subcategory": "pricing_comparison",
+      "description": "Compare across plans - requires synthesizing multiple sections",
+      "query": "What are the file size limits for each plan?",
+      "customer_email": null,
+      "expected_tools": ["search_knowledge_base"],
+      "expected_tool_args": {},
+      "ground_truth": "Here are the file size limits by plan: Free — 100MB per file, Basic — 5GB per file, Professional — 50GB per file, Enterprise — no limit.",
+      "expected_response_contains": ["100MB", "5GB", "50GB"],
+      "expected_response_excludes": [],
+      "difficulty": "medium"
+    },
+    {
+      "id": "kb_003",
+      "category": "knowledge_base",
+      "subcategory": "troubleshooting_specific",
+      "description": "Specific error code with documented solution",
+      "query": "I'm getting Error 507 when trying to upload files. What does this mean?",
+      "customer_email": null,
+      "expected_tools": ["search_knowledge_base"],
+      "expected_tool_args": {},
+      "ground_truth": "Error 507 means your storage quota has been exceeded. You won't be able to upload new files until you free up space. You can delete unnecessary files, empty the trash, or upgrade your plan for more storage.",
+      "expected_response_contains": ["storage", "quota"],
+      "expected_response_excludes": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "kb_004",
+      "category": "knowledge_base",
+      "subcategory": "troubleshooting_procedural",
+      "description": "Multi-step troubleshooting procedure from docs",
+      "query": "My files aren't syncing. What should I check?",
+      "customer_email": null,
+      "expected_tools": ["search_knowledge_base"],
+      "expected_tool_args": {},
+      "ground_truth": "Here are a few things to check: 1) Make sure you have an internet connection — try loading a website to confirm. 2) Check the CloudSync system tray icon — green means it's working, yellow means syncing, red means there's an error. 3) Verify you haven't exceeded your storage quota. If those look fine, try restarting CloudSync from the system tray. You can also check for specific errors by right-clicking the icon and selecting 'View Sync Status.'",
+      "expected_response_contains": ["internet", "sync"],
+      "expected_response_excludes": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "kb_005",
+      "category": "knowledge_base",
+      "subcategory": "faq_security",
+      "description": "Security-related FAQ question",
+      "query": "Is CloudSync secure? What encryption do you use?",
+      "customer_email": null,
+      "expected_tools": ["search_knowledge_base"],
+      "expected_tool_args": {},
+      "ground_truth": "Yes, CloudSync takes security seriously. We use 256-bit AES encryption for files at rest and TLS 1.3 for files in transit. We also offer two-factor authentication, our data centers are SOC 2 Type II certified, and we're GDPR compliant.",
+      "expected_response_contains": ["256", "AES", "encryption"],
+      "expected_response_excludes": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "kb_006",
+      "category": "knowledge_base",
+      "subcategory": "policy_cancellation",
+      "description": "Cancellation and data retention policy",
+      "query": "If I cancel my subscription, what happens to my files?",
+      "customer_email": null,
+      "expected_tools": ["search_knowledge_base"],
+      "expected_tool_args": {},
+      "ground_truth": "Your files remain accessible until the end of your current billing period. After that, you can still download your files for 30 days, but you won't be able to upload new ones. After 30 days, files may be deleted. You can cancel by going to Settings > Billing > Cancel Subscription.",
+      "expected_response_contains": ["30 days"],
+      "expected_response_excludes": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "kb_007",
+      "category": "knowledge_base",
+      "subcategory": "policy_discount",
+      "description": "Discount availability question",
+      "query": "I'm a university student. Do you offer any discounts?",
+      "customer_email": null,
+      "expected_tools": ["search_knowledge_base"],
+      "expected_tool_args": {},
+      "ground_truth": "Yes! Students get 50% off the Basic and Professional plans. You just need to verify with a .edu email address. We also offer other discounts: 17% off with annual billing, 30% off for non-profits, 20% off Enterprise for government, and a $5 credit for each referral.",
+      "expected_response_contains": ["50%", "student", ".edu"],
+      "expected_response_excludes": [],
+      "difficulty": "medium"
+    },
+    {
+      "id": "kb_008",
+      "category": "knowledge_base",
+      "subcategory": "unanswerable",
+      "description": "Question not covered in the knowledge base",
+      "query": "Does CloudSync integrate with Salesforce?",
+      "customer_email": null,
+      "expected_tools": ["search_knowledge_base"],
+      "expected_tool_args": {},
+      "ground_truth": "I don't have specific information about Salesforce integration in our documentation. I'd recommend reaching out to our sales team at sales@cloudsync.com or checking cloudsync.com for the latest integration details. The Enterprise plan does support custom integrations, so that may be an option.",
+      "expected_response_contains": [],
+      "expected_response_excludes": [],
+      "difficulty": "medium",
+      "notes": "Not in docs - agent should acknowledge it doesn't have this info rather than hallucinate an answer"
+    },
+    {
+      "id": "kb_009",
+      "category": "knowledge_base",
+      "subcategory": "troubleshooting_mobile",
+      "description": "Platform-specific troubleshooting from docs",
+      "query": "The CloudSync app on my Android phone keeps crashing. What can I try?",
+      "customer_email": null,
+      "expected_tools": ["search_knowledge_base"],
+      "expected_tool_args": {},
+      "ground_truth": "For Android crashes, try these steps in order: 1) Clear the app cache. 2) Clear app data (you'll need to log in again). 3) Check that CloudSync has the necessary permissions. 4) Disable battery optimization for CloudSync. 5) If none of that works, reinstall the app from the Google Play Store.",
+      "expected_response_contains": ["cache", "reinstall"],
+      "expected_response_excludes": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "kb_010",
+      "category": "knowledge_base",
+      "subcategory": "hallucination_check",
+      "description": "Question where the answer is in docs - check agent doesn't add false details",
+      "query": "What's the refund policy?",
+      "customer_email": null,
+      "expected_tools": ["search_knowledge_base"],
+      "expected_tool_args": {},
+      "ground_truth": "We offer a 30-day money-back guarantee on all plans. Upgrades are billed immediately with prorated charges, and downgrades take effect at your next billing cycle. If a payment fails, there's a 7-day grace period before any service interruption.",
+      "expected_response_contains": ["30-day", "money-back"],
+      "expected_response_excludes": ["60-day", "90-day refund", "no refunds"],
+      "difficulty": "medium",
+      "notes": "Docs say 30-day money-back guarantee. Agent should not hallucinate different terms."
+    }
+  ]
+}
