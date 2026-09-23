@@ -12,8 +12,10 @@ from llama_index.core.tools import FunctionTool
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Fixed reference time so mock tool payloads are reproducible across runs.
-FIXED_NOW = datetime(2024, 6, 15, 12, 0, 0)
+# Interview reference date. Every mock timestamp is relative to this instant
+# so billing dates and ticket created_at stay consistent and repeatable.
+# last_payment.date is always before this date; next_billing_date is after it.
+FIXED_NOW = datetime(2026, 9, 23, 12, 0, 0)
 
 
 class TicketPriority(Enum):
@@ -65,10 +67,10 @@ class BillingLookupTool:
                 "plan": "Professional",
                 "status": "active",
                 "monthly_amount": 29,
-                "next_billing_date": "2024-07-01",
+                "next_billing_date": "2026-10-01",
                 "payment_method": "card",
                 "last_payment": {
-                    "date": "2024-06-01",
+                    "date": "2026-09-01",
                     "amount": 29,
                     "status": "successful",
                 },
@@ -79,10 +81,10 @@ class BillingLookupTool:
                 "plan": "Professional",
                 "status": "active",
                 "monthly_amount": 29,
-                "next_billing_date": "2024-06-20",
+                "next_billing_date": "2026-10-20",
                 "payment_method": "card",
                 "last_payment": {
-                    "date": "2024-05-20",
+                    "date": "2026-08-20",
                     "amount": 29,
                     "status": "successful",
                 },
@@ -94,10 +96,10 @@ class BillingLookupTool:
                 "plan": "Basic",
                 "status": "active",
                 "monthly_amount": 9,
-                "next_billing_date": "2024-06-25",
+                "next_billing_date": "2026-10-25",
                 "payment_method": "ach",
                 "last_payment": {
-                    "date": "2024-05-25",
+                    "date": "2026-08-25",
                     "amount": 9,
                     "status": "successful",
                 },
@@ -108,10 +110,10 @@ class BillingLookupTool:
                 "plan": "Enterprise",
                 "status": "active",
                 "monthly_amount": 299,
-                "next_billing_date": "2024-07-15",
+                "next_billing_date": "2026-10-15",
                 "payment_method": "invoice",
                 "last_payment": {
-                    "date": "2024-06-15",
+                    "date": "2026-09-15",
                     "amount": 299,
                     "status": "successful",
                 },
@@ -122,10 +124,10 @@ class BillingLookupTool:
                 "plan": "Free",
                 "status": "trialing",
                 "monthly_amount": 0,
-                "next_billing_date": "2024-06-30",
+                "next_billing_date": "2026-10-08",
                 "payment_method": "card",
                 "last_payment": {
-                    "date": "2024-06-01",
+                    "date": "2026-09-01",
                     "amount": 0,
                     "status": "successful",
                 },

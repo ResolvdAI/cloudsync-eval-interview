@@ -6,12 +6,18 @@ and can be extended with more comprehensive evaluation tests.
 """
 
 from src.agent.prompts import SYSTEM_PROMPT
-from src.agent.tools import BillingLookupTool, TicketCreationTool, SystemStatusTool
+from src.agent.tools import (
+    BillingLookupTool,
+    TicketCreationTool,
+    SystemStatusTool,
+    FIXED_NOW,
+)
 from src.agent.core import CustomerSupportAgent
 import os
 import sys
 import json
 import pytest
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List
 from dotenv import load_dotenv
@@ -73,6 +79,23 @@ class TestAgentComponents:
         # Missing identifiers
         assert "error" in tool.lookup()
 
+        # Fixture dates sit on either side of the interview reference date
+        reference = FIXED_NOW.date()
+        for email in (
+            "john.doe@example.com",
+            "jane.smith@company.com",
+            "support@startup.io",
+            "admin@enterprise.org",
+            "user@test.com",
+        ):
+            data = tool.lookup(customer_email=email)["data"]
+            next_billing = datetime.fromisoformat(
+                data["next_billing_date"]).date()
+            last_payment = datetime.fromisoformat(
+                data["last_payment"]["date"]).date()
+            assert last_payment < reference
+            assert next_billing > reference
+
     def test_ticket_tool(self):
         """Test the ticket creation tool is deterministic."""
         tool = TicketCreationTool()
@@ -87,7 +110,7 @@ class TestAgentComponents:
         assert result["success"] is True
         assert result["data"]["ticket_id"] == "TICKET-1001"
         assert result["data"]["priority"] == "high"
-        assert result["data"]["created_at"] == "2024-06-15T12:00:00"
+        assert result["data"]["created_at"] == FIXED_NOW.isoformat()
 
         # Second ticket increments id but keeps fixed timestamp
         second = tool.create(
@@ -96,7 +119,7 @@ class TestAgentComponents:
             customer_email="test@example.com",
         )
         assert second["data"]["ticket_id"] == "TICKET-1002"
-        assert second["data"]["created_at"] == "2024-06-15T12:00:00"
+        assert second["data"]["created_at"] == FIXED_NOW.isoformat()
 
         # Fresh tool instance restarts the counter
         fresh = TicketCreationTool().create(
