@@ -14,7 +14,7 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAI
 from llama_index.llms.anthropic import Anthropic
 from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.core.agent import ReActAgent
+from llama_index.core.agent import ReActAgent, ToolCall, ToolCallResult
 from llama_index.core.tools import FunctionTool, ToolMetadata
 from llama_index.core import (
     VectorStoreIndex,
@@ -25,7 +25,6 @@ from llama_index.core import (
 )
 import copy
 import os
-import types
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 import json
@@ -72,6 +71,7 @@ class CustomerSupportAgent:
         """
         self.verbose = verbose
         self._tool_calls: List[Dict[str, Any]] = []
+        self._pending_tool_ids: Dict[str, int] = {}
         self.knowledge_base_path = knowledge_base_path or settings.knowledge_base_path
         self.index_storage_path = "storage/vector_index"
 
@@ -261,56 +261,54 @@ class CustomerSupportAgent:
             return dict(raw_kwargs)
         return {"value": raw_kwargs}
 
-    def _install_dispatch_trace(self, agent: ReActAgent) -> None:
-        """Record every tool attempt at agent dispatch, including failures."""
-        original_call_tool = agent.call_tool
-        step_config = getattr(original_call_tool, "_step_config", None)
-        if step_config is None:
-            logger.warning(
-                "Agent call_tool is not a workflow step; tool dispatch will not be traced"
+    def _outcome_from_tool_output(self, tool_output: Any) -> tuple:
+        """Turn a ToolOutput into (response, error)."""
+        if tool_output is None:
+            return None, "Tool call failed"
+        if getattr(tool_output, "is_error", False):
+            return None, str(
+                getattr(tool_output, "content", None)
+                or getattr(tool_output, "raw_output", None)
+                or "Tool call failed"
             )
+        return getattr(tool_output, "raw_output", None), None
+
+    def _on_tool_call_event(self, event: ToolCall) -> None:
+        """Record a tool attempt as soon as LlamaIndex emits it."""
+        self._record_tool_call(
+            name=getattr(event, "tool_name", "unknown"),
+            arguments=self._dispatch_arguments(event),
+            response=None,
+            error=None,
+        )
+        tool_id = getattr(event, "tool_id", None)
+        if tool_id:
+            self._pending_tool_ids[tool_id] = len(self._tool_calls) - 1
+
+    def _on_tool_call_result_event(self, event: ToolCallResult) -> None:
+        """Fill in the outcome for a previously recorded attempt."""
+        response, error = self._outcome_from_tool_output(
+            getattr(event, "tool_output", None)
+        )
+        tool_id = getattr(event, "tool_id", None)
+        index = self._pending_tool_ids.pop(tool_id, None) if tool_id else None
+        if index is not None:
+            self._tool_calls[index]["response"] = self._snapshot(response)
+            self._tool_calls[index]["error"] = error
             return
+        self._record_tool_call(
+            name=getattr(event, "tool_name", "unknown"),
+            arguments=self._dispatch_arguments(event),
+            response=response,
+            error=error,
+        )
 
-        async def traced_call_tool(_agent: Any, ctx: Any, ev: Any) -> Any:
-            name = getattr(ev, "tool_name", "unknown")
-            arguments = self._dispatch_arguments(ev)
-            try:
-                result_ev = await original_call_tool(ctx, ev)
-            except Exception as exc:
-                self._record_tool_call(
-                    name=name,
-                    arguments=arguments,
-                    response=None,
-                    error=str(exc),
-                )
-                raise
-
-            tool_output = getattr(result_ev, "tool_output", None)
-            if getattr(tool_output, "is_error", False):
-                self._record_tool_call(
-                    name=name,
-                    arguments=arguments,
-                    response=None,
-                    error=str(
-                        getattr(tool_output, "content", None)
-                        or getattr(tool_output, "raw_output", None)
-                        or "Tool call failed"
-                    ),
-                )
-            else:
-                raw = getattr(tool_output, "raw_output",
-                              None) if tool_output else None
-                self._record_tool_call(
-                    name=name,
-                    arguments=arguments,
-                    response=raw,
-                    error=None,
-                )
-            return result_ev
-
-        # type: ignore[attr-defined]
-        traced_call_tool._step_config = step_config
-        agent.call_tool = types.MethodType(traced_call_tool, agent)
+    def _handle_agent_event(self, event: Any) -> None:
+        """Collect ToolCall / ToolCallResult events from the workflow stream."""
+        if isinstance(event, ToolCallResult):
+            self._on_tool_call_result_event(event)
+        elif isinstance(event, ToolCall):
+            self._on_tool_call_event(event)
 
     def _function_tool(
         self,
@@ -409,7 +407,7 @@ class CustomerSupportAgent:
             Configured ReActAgent instance
         """
         # In newer versions of llama-index, use the constructor directly
-        agent = ReActAgent(
+        return ReActAgent(
             tools=self.tools,
             llm=self.llm,
             memory=self.memory,
@@ -417,8 +415,6 @@ class CustomerSupportAgent:
             system_prompt=SYSTEM_PROMPT,
             max_iterations=10,
         )
-        self._install_dispatch_trace(agent)
-        return agent
 
     def query(self, user_query: str, metadata: Optional[Dict[str, Any]] = None) -> str:
         """
@@ -431,12 +427,13 @@ class CustomerSupportAgent:
         Returns:
             The agent's response as a string.
 
-        Tool attempts made while handling this query are recorded at dispatch
-        (including unknown tools and failed calls) and can be read with
+        Tool attempts are recorded from LlamaIndex ToolCall and ToolCallResult
+        events (including unknown tools and failed calls) and can be read with
         get_tool_trace(). The trace is cleared at the start of this call.
         query_with_trace() returns the answer and that trace together.
         """
         self._tool_calls.clear()
+        self._pending_tool_ids.clear()
 
         logger.info(f"\n{'='*60}")
         logger.info(f"📨 New query received: {user_query[:100]}..." if len(
@@ -457,8 +454,12 @@ class CustomerSupportAgent:
         # Create a new async function to run the agent
         async def run_agent_async():
             logger.info("🤔 Agent is thinking...")
-            # The run method returns an EventResponse, we need to await it
-            response = await self.agent.run(formatted_query)
+            handler = self.agent.run(formatted_query)
+            try:
+                async for event in handler.stream_events():
+                    self._handle_agent_event(event)
+            finally:
+                response = await handler
             logger.info("✅ Agent has formulated a response")
             return response
 
