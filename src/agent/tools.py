@@ -3,9 +3,7 @@ Custom tools for the Customer Support Agent.
 """
 
 from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta
-import random
-import json
+from datetime import datetime
 import logging
 from enum import Enum
 
@@ -13,6 +11,9 @@ from llama_index.core.tools import FunctionTool
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+# Fixed reference time so mock tool payloads are reproducible across runs.
+FIXED_NOW = datetime(2024, 6, 15, 12, 0, 0)
 
 
 class TicketPriority(Enum):
@@ -54,40 +55,86 @@ class BillingLookupTool:
         self._mock_customers = self._generate_mock_customers()
 
     def _generate_mock_customers(self) -> Dict[str, Dict[str, Any]]:
-        """Generate mock customer billing data."""
-        plans = ["Free", "Basic", "Professional", "Enterprise"]
-        statuses = ["active", "past_due", "cancelled", "trialing"]
-
-        customers = {}
-        emails = [
-            "john.doe@example.com",
-            "jane.smith@company.com",
-            "support@startup.io",
-            "admin@enterprise.org",
-            "user@test.com"
+        """Generate fixed mock customer billing data (deterministic)."""
+        fixtures = [
+            {
+                "email": "john.doe@example.com",
+                "customer_id": "cust_1000",
+                "plan": "Professional",
+                "status": "active",
+                "monthly_amount": 29,
+                "next_billing_date": "2024-07-01",
+                "payment_method": "card",
+                "last_payment": {
+                    "date": "2024-06-01",
+                    "amount": 29,
+                    "status": "successful",
+                },
+            },
+            {
+                "email": "jane.smith@company.com",
+                "customer_id": "cust_1001",
+                "plan": "Professional",
+                "status": "active",
+                "monthly_amount": 29,
+                "next_billing_date": "2024-06-20",
+                "payment_method": "card",
+                "last_payment": {
+                    "date": "2024-05-20",
+                    "amount": 29,
+                    "status": "successful",
+                },
+            },
+            {
+                # Matches sample conv_003 (upgrade from Basic → Professional)
+                "email": "support@startup.io",
+                "customer_id": "cust_1002",
+                "plan": "Basic",
+                "status": "active",
+                "monthly_amount": 9,
+                "next_billing_date": "2024-06-25",
+                "payment_method": "ach",
+                "last_payment": {
+                    "date": "2024-05-25",
+                    "amount": 9,
+                    "status": "successful",
+                },
+            },
+            {
+                "email": "admin@enterprise.org",
+                "customer_id": "cust_1003",
+                "plan": "Enterprise",
+                "status": "active",
+                "monthly_amount": 299,
+                "next_billing_date": "2024-07-15",
+                "payment_method": "invoice",
+                "last_payment": {
+                    "date": "2024-06-15",
+                    "amount": 299,
+                    "status": "successful",
+                },
+            },
+            {
+                "email": "user@test.com",
+                "customer_id": "cust_1004",
+                "plan": "Free",
+                "status": "trialing",
+                "monthly_amount": 0,
+                "next_billing_date": "2024-06-30",
+                "payment_method": "card",
+                "last_payment": {
+                    "date": "2024-06-01",
+                    "amount": 0,
+                    "status": "successful",
+                },
+            },
         ]
 
-        for i, email in enumerate(emails):
-            customer_id = f"cust_{1000 + i}"
-            customers[email] = {
-                "customer_id": customer_id,
-                "email": email,
-                "plan": random.choice(plans),
-                "status": random.choice(statuses),
-                "monthly_amount": random.choice([0, 9, 29, 99, 299]),
-                "next_billing_date": (
-                    datetime.now() + timedelta(days=random.randint(1, 30))
-                ).strftime("%Y-%m-%d"),
-                "payment_method": random.choice(["card", "invoice", "ach"]),
-                "last_payment": {
-                    "date": (
-                        datetime.now() - timedelta(days=random.randint(1, 30))
-                    ).strftime("%Y-%m-%d"),
-                    "amount": random.choice([0, 9, 29, 99, 299]),
-                    "status": "successful"
-                }
-            }
-            customers[customer_id] = customers[email]
+        customers: Dict[str, Dict[str, Any]] = {}
+        for fixture in fixtures:
+            record = dict(fixture)
+            customers[fixture["email"]] = record
+            customers[fixture["customer_id"]] = record
 
         return customers
 
@@ -124,11 +171,11 @@ class BillingLookupTool:
                 "data": self._mock_customers[lookup_key]
             }
 
-        # Customer not found - generate a default response
+        # Customer not found — deterministic placeholder (no random IDs)
         return {
             "success": False,
             "data": {
-                "customer_id": customer_id or f"cust_{random.randint(2000, 9999)}",
+                "customer_id": customer_id or "cust_unknown",
                 "email": customer_email or "unknown@example.com",
                 "plan": None,
                 "status": None,
@@ -221,7 +268,7 @@ class TicketCreationTool:
             "priority": priority_enum.value,
             "category": category_enum.value,
             "status": "open",
-            "created_at": datetime.now().isoformat(),
+            "created_at": FIXED_NOW.isoformat(),
             "estimated_response_time": response_times[priority_enum],
             "assigned_to": None,
             "notes": "Ticket created via AI agent"
@@ -263,8 +310,8 @@ class SystemStatusTool:
         self._services = self._initialize_services()
 
     def _initialize_services(self) -> Dict[str, Dict[str, Any]]:
-        """Initialize mock service status data."""
-        services = {
+        """Initialize fixed mock service status data (always operational)."""
+        return {
             "file_sync": {
                 "name": "File Synchronization",
                 "status": "operational",
@@ -301,22 +348,6 @@ class SystemStatusTool:
                 "response_time_ms": 50
             }
         }
-
-        # Randomly add some issues for demonstration
-        if random.random() < 0.2:  # 20% chance of an issue
-            affected_service = random.choice(list(services.keys()))
-            services[affected_service]["status"] = random.choice([
-                "degraded_performance",
-                "partial_outage",
-                "maintenance"
-            ])
-            services[affected_service]["last_incident"] = {
-                "time": datetime.now().isoformat(),
-                "description": "Investigating reports of slow performance",
-                "affected_regions": ["US-East", "EU-West"]
-            }
-
-        return services
 
     def check(self, service: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -361,18 +392,7 @@ class SystemStatusTool:
             return "Minor issues detected"
 
     def _get_maintenance_windows(self) -> List[Dict[str, Any]]:
-        """Get scheduled maintenance windows."""
-        # Mock maintenance windows
-        if random.random() < 0.3:  # 30% chance of scheduled maintenance
-            return [{
-                "service": "web_dashboard",
-                "start_time": (
-                    datetime.now() + timedelta(days=7)
-                ).strftime("%Y-%m-%d 02:00 UTC"),
-                "duration": "2 hours",
-                "description": "Database optimization and security updates",
-                "impact": "Web dashboard will be unavailable"
-            }]
+        """Get scheduled maintenance windows (fixed empty — no random windows)."""
         return []
 
     def _get_recent_incidents(self) -> List[Dict[str, Any]]:
