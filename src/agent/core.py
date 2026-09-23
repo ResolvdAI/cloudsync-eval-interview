@@ -23,6 +23,9 @@ from llama_index.core import (
     StorageContext,
     load_index_from_storage,
 )
+import copy
+import functools
+import inspect
 import os
 from typing import List, Optional, Dict, Any
 from pathlib import Path
@@ -69,6 +72,7 @@ class CustomerSupportAgent:
             verbose: Whether to print verbose output
         """
         self.verbose = verbose
+        self._tool_calls: List[Dict[str, Any]] = []
         self.knowledge_base_path = knowledge_base_path or settings.knowledge_base_path
         self.index_storage_path = "storage/vector_index"
 
@@ -206,6 +210,60 @@ class CustomerSupportAgent:
 
         return index
 
+    def _record_tool_call(self, name: str, arguments: Dict[str, Any]) -> None:
+        """Record one real tool invocation, in call order."""
+        try:
+            arguments_snapshot = copy.deepcopy(arguments)
+        except Exception:
+            arguments_snapshot = dict(arguments)
+        self._tool_calls.append({
+            "order": len(self._tool_calls) + 1,
+            "name": name,
+            "arguments": arguments_snapshot,
+        })
+
+    def get_tool_trace(self) -> List[Dict[str, Any]]:
+        """
+        Return tool invocations recorded during the most recent query.
+
+        Each entry contains:
+        - order: 1-based position of the call within that query
+        - name: tool name
+        - arguments: arguments actually passed to the tool. Defaults the
+          caller omitted are not filled in.
+
+        The list is cleared at the start of each query. This is a copy of
+        the recorded calls, not a reconstruction from the final answer.
+        """
+        return copy.deepcopy(self._tool_calls)
+
+    def _traced_function_tool(
+        self,
+        fn: Any,
+        name: str,
+        description: str,
+    ) -> FunctionTool:
+        """Wrap a tool function so each invocation is appended to the trace."""
+        signature = inspect.signature(fn)
+
+        @functools.wraps(fn)
+        def traced(*args: Any, **kwargs: Any) -> Any:
+            try:
+                arguments = dict(signature.bind(*args, **kwargs).arguments)
+            except TypeError:
+                arguments = dict(kwargs)
+                for index, value in enumerate(args):
+                    arguments[f"arg_{index}"] = value
+            self._record_tool_call(name, arguments)
+            return fn(*args, **kwargs)
+
+        traced.__signature__ = signature  # type: ignore[attr-defined]
+        return FunctionTool.from_defaults(
+            fn=traced,
+            name=name,
+            description=description,
+        )
+
     def _setup_tools(self) -> List[FunctionTool]:
         """
         Set up the agent's custom tools.
@@ -223,34 +281,61 @@ class CustomerSupportAgent:
                 similarity_top_k=3,
                 verbose=self.verbose
             )
-            kb_tool = FunctionTool.from_defaults(
-                fn=lambda query: str(query_engine.query(query)),
-                name="search_knowledge_base",
-                description=(
-                    "Search the CloudSync knowledge base for information about "
-                    "features, troubleshooting, FAQs, and documentation. "
-                    "Use this for general product questions and technical issues."
-                ),
+
+            def search_knowledge_base(query: str) -> str:
+                """Search general CloudSync product and troubleshooting facts."""
+                return str(query_engine.query(query))
+
+            tools.append(
+                self._traced_function_tool(
+                    search_knowledge_base,
+                    name="search_knowledge_base",
+                    description=(
+                        "Search the CloudSync knowledge base for general product "
+                        "and troubleshooting facts, including features, pricing, "
+                        "setup, FAQs, and how to fix common problems. "
+                        "Use this for product questions that are not about a "
+                        "specific customer's billing, a current service issue, "
+                        "or creating a support ticket."
+                    ),
+                )
             )
-            tools.append(kb_tool)
 
         # Billing lookup tool
         if settings.enable_billing_tool:
             logger.debug("💳 Adding billing lookup tool")
             billing_tool = BillingLookupTool()
-            tools.append(billing_tool.as_function_tool())
+            tools.append(
+                self._traced_function_tool(
+                    billing_tool.lookup,
+                    name=billing_tool.name,
+                    description=billing_tool.description,
+                )
+            )
 
         # Ticket creation tool
         if settings.enable_ticket_tool:
             logger.debug("🎫 Adding ticket creation tool")
             ticket_tool = TicketCreationTool()
-            tools.append(ticket_tool.as_function_tool())
+            tools.append(
+                self._traced_function_tool(
+                    ticket_tool.create,
+                    name=ticket_tool.name,
+                    description=ticket_tool.description,
+                )
+            )
 
         # System status tool
         if settings.enable_status_tool:
             logger.debug("🔍 Adding system status tool")
             status_tool = SystemStatusTool()
-            tools.append(status_tool.as_function_tool())
+            tools.append(
+                self._traced_function_tool(
+                    status_tool.check,
+                    name=status_tool.name,
+                    description=status_tool.description,
+                )
+            )
 
         logger.info(f"✅ Initialized {len(tools)} tools for agent")
         return tools
@@ -281,8 +366,14 @@ class CustomerSupportAgent:
             metadata: Optional metadata about the query (customer_id, etc.)
 
         Returns:
-            The agent's response as a string
+            The agent's response as a string.
+
+        Tool invocations made while handling this query are recorded and can
+        be read with get_tool_trace(). The trace is cleared at the start of
+        this call. query_with_trace() returns the answer and that trace together.
         """
+        self._tool_calls.clear()
+
         logger.info(f"\n{'='*60}")
         logger.info(f"📨 New query received: {user_query[:100]}..." if len(
             user_query) > 100 else f"📨 New query received: {user_query}")
@@ -334,6 +425,32 @@ class CustomerSupportAgent:
             response_str) > 200 else f"Response: {response_str}")
         logger.info(f"{'='*60}\n")
         return response_str
+
+    def query_with_trace(
+        self,
+        user_query: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Process a customer query and return the answer plus tool-call trace.
+
+        The trace lists each tool the agent actually invoked, in call order.
+        It is not inferred from the final answer.
+
+        Args:
+            user_query: The customer's question or request
+            metadata: Optional metadata about the query (customer_id, etc.)
+
+        Returns:
+            A dict with:
+            - answer: the same string query() returns
+            - tool_calls: list of {order, name, arguments} in call order
+        """
+        answer = self.query(user_query, metadata)
+        return {
+            "answer": answer,
+            "tool_calls": self.get_tool_trace(),
+        }
 
     def _format_query(self, query: str, metadata: Optional[Dict[str, Any]] = None) -> str:
         """

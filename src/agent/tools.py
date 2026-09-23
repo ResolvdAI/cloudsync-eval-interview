@@ -46,9 +46,11 @@ class BillingLookupTool:
         """Initialize the billing lookup tool."""
         self.name = "lookup_billing"
         self.description = (
-            "Look up billing information for a customer. "
-            "Requires either customer_email or customer_id. "
-            "Returns subscription status, billing history, and payment method."
+            "Look up a customer's billing only when the user asks about billing "
+            "and provides an email address or customer ID. "
+            "Pass customer_email or customer_id exactly as provided. Do not invent identifiers. "
+            "Returns subscription status, billing history, and payment method. "
+            "If neither identifier is provided, returns an error."
         )
 
         # Mock data for demonstration
@@ -206,12 +208,19 @@ class TicketCreationTool:
 
     def __init__(self):
         """Initialize the ticket creation tool."""
+        priorities = ", ".join(priority.value for priority in TicketPriority)
+        categories = ", ".join(category.value for category in TicketCategory)
         self.name = "create_ticket"
         self.description = (
-            "Create a support ticket for issues requiring human intervention. "
-            "Use for complex technical issues, account problems, or when "
-            "the knowledge base doesn't have sufficient information. "
-            "Returns ticket ID and estimated response time."
+            "Create a support ticket only when escalation is appropriate: "
+            "the user asks for a ticket or a human, or the issue cannot be resolved "
+            "with search, billing, and system status. "
+            "Do not claim a ticket was created unless this tool returns success. "
+            f"priority must be one of: {priorities}. "
+            f"category must be one of: {categories}. "
+            "An invalid priority or category returns a validation error and does not create a ticket. "
+            "Pass customer_email only when the user provided one. "
+            "If no email is supplied it is stored as null; do not invent an email address."
         )
         self._ticket_counter = 1000
 
@@ -229,26 +238,26 @@ class TicketCreationTool:
         Args:
             subject: Brief summary of the issue
             description: Detailed description of the problem
-            customer_email: Customer's email address
-            priority: Ticket priority (low, medium, high, critical)
-            category: Ticket category (billing, technical, account, etc.)
+            customer_email: Email the user provided. Omit it instead of inventing one.
+            priority: One of low, medium, high, critical. Invalid values return an error.
+            category: One of billing, technical, account, feature_request, bug_report, other. Invalid values return an error.
 
         Returns:
-            Dictionary containing ticket information
+            Dictionary containing ticket information, or a validation error.
         """
-        # Validate priority
-        try:
-            priority_enum = TicketPriority(priority.lower())
-        except ValueError:
-            priority_enum = TicketPriority.MEDIUM
+        priority_error = self._choice_error("priority", priority, TicketPriority)
+        category_error = self._choice_error("category", category, TicketCategory)
+        errors = [message for message in (priority_error, category_error) if message]
+        if errors:
+            return {
+                "success": False,
+                "error": " ".join(errors),
+            }
 
-        # Validate category
-        try:
-            category_enum = TicketCategory(category.lower())
-        except ValueError:
-            category_enum = TicketCategory.OTHER
+        priority_enum = TicketPriority(priority.lower())
+        category_enum = TicketCategory(category.lower())
 
-        # Generate ticket ID
+        # Generate ticket ID only after validation succeeds
         self._ticket_counter += 1
         ticket_id = f"TICKET-{self._ticket_counter}"
 
@@ -264,7 +273,11 @@ class TicketCreationTool:
             "ticket_id": ticket_id,
             "subject": subject,
             "description": description,
-            "customer_email": customer_email or "not_provided@example.com",
+            "customer_email": (
+                customer_email
+                if isinstance(customer_email, str) and customer_email.strip()
+                else None
+            ),
             "priority": priority_enum.value,
             "category": category_enum.value,
             "status": "open",
@@ -279,6 +292,18 @@ class TicketCreationTool:
             "message": f"Support ticket {ticket_id} created successfully",
             "data": ticket_data
         }
+
+    @staticmethod
+    def _choice_error(field: str, value: Any, enum_cls: Any) -> Optional[str]:
+        """Return a validation error when value is not a member of enum_cls."""
+        allowed = ", ".join(member.value for member in enum_cls)
+        if isinstance(value, str):
+            try:
+                enum_cls(value.lower())
+                return None
+            except ValueError:
+                pass
+        return f"Invalid {field} {value!r}. Expected one of: {allowed}."
 
     def as_function_tool(self) -> FunctionTool:
         """Convert to LlamaIndex FunctionTool."""
@@ -300,14 +325,14 @@ class SystemStatusTool:
     def __init__(self):
         """Initialize the system status tool."""
         self.name = "check_system_status"
-        self.description = (
-            "Check the current status of CloudSync services including "
-            "file sync, API, web dashboard, and mobile apps. "
-            "Returns information about any ongoing issues or maintenance."
-        )
-
-        # Mock service status
         self._services = self._initialize_services()
+        supported = ", ".join(self._services.keys())
+        self.description = (
+            "Check CloudSync for a current service issue, outage, or degradation. "
+            f"If the user names a service, pass service as one of: {supported}. "
+            "Omit service when the user does not name one. "
+            "An unsupported service name returns an error and does not report every service."
+        )
 
     def _initialize_services(self) -> Dict[str, Dict[str, Any]]:
         """Initialize fixed mock service status data (always operational)."""
@@ -354,13 +379,20 @@ class SystemStatusTool:
         Check system status.
 
         Args:
-            service: Specific service to check (optional)
+            service: Service key (file_sync, api, web_dashboard, mobile_apps, authentication). Omit to check all services. Unsupported names return an error.
 
         Returns:
-            Dictionary containing status information
+            Dictionary containing status information, or an error for an unsupported service.
         """
-        if service and service in self._services:
-            # Return specific service status
+        if service is None:
+            return self._all_services_status()
+
+        try:
+            known = service in self._services
+        except TypeError:
+            known = False
+
+        if known:
             return {
                 "success": True,
                 "service": service,
@@ -368,7 +400,18 @@ class SystemStatusTool:
                 "overall_status": self._get_overall_status()
             }
 
-        # Return all services status
+        supported = ", ".join(self._services.keys())
+        return {
+            "success": False,
+            "error": (
+                f"Unsupported service {service!r}. "
+                f"Expected one of: {supported}."
+            ),
+            "service": service,
+        }
+
+    def _all_services_status(self) -> Dict[str, Any]:
+        """Return the status of every service."""
         all_operational = all(
             s["status"] == "operational" for s in self._services.values()
         )
