@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 """
-Run sample conversations through the agent and write a scored dataset.
+Run sample conversations through the agent and write a baseline run.
 
-Each result includes the final answer and the actual tool_calls trace
-(name, arguments, tool response, call order).
+The output is observations for candidates to score: the final answer and the
+actual tool_calls trace (name, arguments, tool response, call order, and any
+dispatch error). It does not contain scores.
 """
 
 from src.agent.core import CustomerSupportAgent
+from config.settings import settings
 import json
 import time
 import argparse
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 # Add src to path
 import sys
@@ -33,31 +35,57 @@ def load_sample_queries(max_queries: Optional[int] = None) -> List[Dict]:
     return conversations
 
 
+def _nonempty_text(value: Any) -> Optional[str]:
+    """Return a stripped string, or None when the value is missing or blank."""
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+def query_metadata(query_data: Dict) -> Optional[Dict[str, str]]:
+    """Build query metadata, omitting blank customer identifiers."""
+    metadata: Dict[str, str] = {}
+    email = _nonempty_text(query_data.get("customer_email"))
+    if email:
+        metadata["customer_email"] = email
+    customer_id = _nonempty_text(query_data.get("customer_id"))
+    if customer_id:
+        metadata["customer_id"] = customer_id
+    return metadata or None
+
+
 def run_query(agent: CustomerSupportAgent, query_data: Dict) -> Dict:
-    """Run a single query through the agent and capture the response."""
+    """Run a single query and always return a result row, including errors."""
     print(f"\n  📝 Query {query_data['id']}")
     print(f"     Text: {query_data['query'][:60]}...")
-    if 'customer_email' in query_data:
-        print(f"     Customer: {query_data['customer_email']}")
+    email = _nonempty_text(query_data.get("customer_email"))
+    if email:
+        print(f"     Customer: {email}")
 
     start_time = time.time()
     print(f"     Status: Processing...", end='', flush=True)
 
-    # Prepare metadata with customer email if provided
-    metadata = {}
-    if 'customer_email' in query_data:
-        metadata['customer_email'] = query_data['customer_email']
-
-    result = agent.query_with_trace(
-        query_data['query'], metadata=metadata if metadata else None)
-    response = result["answer"]
-    tool_calls = result["tool_calls"]
-
-    # Keep each generated case independent of earlier conversation turns.
-    agent.reset_memory()
+    try:
+        result = agent.query_with_trace(
+            query_data['query'], metadata=query_metadata(query_data))
+        response = result["answer"]
+        tool_calls = result["tool_calls"]
+        error = None
+    except Exception as exc:
+        response = None
+        tool_calls = agent.get_tool_trace()
+        error = str(exc)
+    finally:
+        # Keep each case independent, including after a failed query.
+        agent.reset_memory()
 
     response_time = time.time() - start_time
-    print(f"\r     Status: ✅ Complete ({response_time:.1f}s)")
+    if error:
+        print(f"\r     Status: ❌ Failed ({response_time:.1f}s)")
+        print(f"     Error: {error}")
+    else:
+        print(f"\r     Status: ✅ Complete ({response_time:.1f}s)")
 
     if tool_calls:
         names = ", ".join(call["name"] for call in tool_calls)
@@ -65,7 +93,7 @@ def run_query(agent: CustomerSupportAgent, query_data: Dict) -> Dict:
     else:
         print("     Tool calls: none")
 
-    if len(response) > 0:
+    if isinstance(response, str) and response:
         preview = response[:100].replace('\n', ' ')
         print(f"     Response preview: {preview}...")
 
@@ -75,18 +103,19 @@ def run_query(agent: CustomerSupportAgent, query_data: Dict) -> Dict:
         "response": response,
         "tool_calls": tool_calls,
         "response_time": response_time,
-        "customer_email": query_data.get('customer_email')
+        "customer_email": query_data.get('customer_email'),
+        "error": error,
     }
 
 
 def save_dataset(results: List[Dict], output_path: str):
-    """Save the test dataset to a JSON file."""
+    """Save the baseline run to a JSON file."""
     dataset = {
         "metadata": {
             "created_at": datetime.now().isoformat(),
             "total_tests": len(results),
-            "agent_model": "claude-3-5-haiku-20241022",
-            "description": "Test dataset generated from sample queries"
+            "agent_model": settings.llm_model,
+            "description": "Baseline run of sample conversations (observations only, no scores)"
         },
         "results": results
     }
@@ -98,12 +127,12 @@ def save_dataset(results: List[Dict], output_path: str):
     with open(output_path, 'w') as f:
         json.dump(dataset, f, indent=2)
 
-    print(f"\n✅ Saved dataset to: {output_path}")
+    print(f"\n✅ Saved baseline run to: {output_path}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Run sample conversations through the agent and write a dataset')
+        description='Run sample conversations through the agent and write a baseline run')
     parser.add_argument(
         '--max-queries',
         type=int,
@@ -140,7 +169,7 @@ def main():
         # Default: show INFO level
         logging.getLogger('src.agent.core').setLevel(logging.INFO)
 
-    print("🚀 Generating Test Dataset")
+    print("🚀 Running sample conversations")
     print("=" * 60)
 
     # Load sample queries
@@ -160,24 +189,18 @@ def main():
     print("=" * 60)
 
     for i, query_data in enumerate(queries, 1):
-        try:
-            # Show estimated time remaining
-            if i > 1 and total_time > 0:
-                avg_time = total_time / (i - 1)
-                remaining_queries = len(queries) - i + 1
-                est_remaining = avg_time * remaining_queries
-                print(
-                    f"\n[{i}/{len(queries)}] Processing query... (est. {est_remaining:.0f}s remaining)")
-            else:
-                print(f"\n[{i}/{len(queries)}] Processing query...")
+        if i > 1 and total_time > 0:
+            avg_time = total_time / (i - 1)
+            remaining_queries = len(queries) - i + 1
+            est_remaining = avg_time * remaining_queries
+            print(
+                f"\n[{i}/{len(queries)}] Processing query... (est. {est_remaining:.0f}s remaining)")
+        else:
+            print(f"\n[{i}/{len(queries)}] Processing query...")
 
-            result = run_query(agent, query_data)
-            results.append(result)
-            total_time += result['response_time']
-
-        except Exception as e:
-            print(f"\n  ❌ Error on {query_data['id']}: {str(e)}")
-            continue
+        result = run_query(agent, query_data)
+        results.append(result)
+        total_time += result['response_time']
 
     end_timestamp = datetime.now()
     elapsed = (end_timestamp - start_timestamp).total_seconds()
@@ -189,33 +212,40 @@ def main():
     save_dataset(results, args.output)
 
     # Print summary statistics
-    print("\n📊 Dataset Statistics:")
-    print(f"  Total responses: {len(results)}")
+    failed = sum(1 for result in results if result.get("error"))
+    print("\n📊 Baseline run:")
+    print(f"  Total observations: {len(results)}")
+    print(f"  Failed queries: {failed}")
     if results:
         print(
             f"  Average response time: {sum(r['response_time'] for r in results) / len(results):.2f}s"
         )
     else:
-        print("  No successful responses generated")
+        print("  No observations generated")
 
-    # Count actual tool invocations from the recorded traces
+    # Count actual tool attempts from the recorded traces
     if results:
         tool_counts = {}
+        failed_attempts = 0
         for result in results:
             for call in result.get("tool_calls", []):
                 name = call.get("name")
                 if name:
                     tool_counts[name] = tool_counts.get(name, 0) + 1
+                if call.get("error"):
+                    failed_attempts += 1
 
         if tool_counts:
             print("\n🔧 Tool Usage:")
             for tool, count in tool_counts.items():
                 print(f"  {tool}: {count} times")
+            if failed_attempts:
+                print(f"  Failed attempts: {failed_attempts}")
         else:
             print("\n🔧 No tools were invoked")
 
     print("\n💡 Next Steps:")
-    print("  1. Analyze the responses in the generated dataset")
+    print("  1. Treat this file as a baseline run of observations, not scores")
     print("  2. Identify patterns of failures or poor responses")
     print("  3. Build your evaluation system to score these responses")
     print("  4. Improve the agent prompts and measure the impact")

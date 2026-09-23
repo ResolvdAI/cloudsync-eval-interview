@@ -22,11 +22,11 @@ pip install -r requirements.txt
 # Verify setup
 python verify_setup.py
 
-# Try the agent
-python run_cli.py
-
 # Generate test data from sample conversations in src/data/sample_conversations.json
 python run_sample_conversations.py --max-queries 5
+
+# OPTIONAL -- Try the agent to chat with it yourself
+python run_cli.py
 ```
 
 ## The Challenge

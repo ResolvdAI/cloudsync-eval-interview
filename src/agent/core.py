@@ -24,9 +24,8 @@ from llama_index.core import (
     load_index_from_storage,
 )
 import copy
-import functools
-import inspect
 import os
+import types
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 import json
@@ -224,55 +223,104 @@ class CustomerSupportAgent:
         name: str,
         arguments: Dict[str, Any],
         response: Any,
+        error: Optional[str] = None,
     ) -> None:
-        """Record one real tool invocation, in call order."""
+        """Record one dispatched tool attempt, in call order."""
         self._tool_calls.append({
             "order": len(self._tool_calls) + 1,
             "name": name,
             "arguments": self._snapshot(arguments),
             "response": self._snapshot(response),
+            "error": error,
         })
 
     def get_tool_trace(self) -> List[Dict[str, Any]]:
         """
-        Return tool invocations recorded during the most recent query.
+        Return tool attempts recorded during the most recent query.
 
         Each entry contains:
-        - order: 1-based position of the call within that query
-        - name: tool name
-        - arguments: arguments actually passed to the tool. Defaults the
-          caller omitted are not filled in.
-        - response: value the tool returned for that invocation.
+        - order: 1-based position of the attempt within that query
+        - name: tool name as dispatched (including unknown names)
+        - arguments: arguments the agent dispatched. Defaults the caller
+          omitted are not filled in.
+        - response: value the tool returned, or null when dispatch failed
+        - error: null on success; a message when the attempt failed
+          (unknown tool, rejected arguments, or an exception)
 
         The list is cleared at the start of each query. This is a copy of
-        the recorded calls, not a reconstruction from the final answer.
+        the recorded attempts, not a reconstruction from the final answer.
         """
         return copy.deepcopy(self._tool_calls)
 
-    def _traced_function_tool(
+    def _dispatch_arguments(self, ev: Any) -> Dict[str, Any]:
+        """Read the arguments the agent dispatched, before the tool runs."""
+        raw_kwargs = getattr(ev, "tool_kwargs", None)
+        if raw_kwargs is None:
+            return {}
+        if isinstance(raw_kwargs, dict):
+            return dict(raw_kwargs)
+        return {"value": raw_kwargs}
+
+    def _install_dispatch_trace(self, agent: ReActAgent) -> None:
+        """Record every tool attempt at agent dispatch, including failures."""
+        original_call_tool = agent.call_tool
+        step_config = getattr(original_call_tool, "_step_config", None)
+        if step_config is None:
+            logger.warning(
+                "Agent call_tool is not a workflow step; tool dispatch will not be traced"
+            )
+            return
+
+        async def traced_call_tool(_agent: Any, ctx: Any, ev: Any) -> Any:
+            name = getattr(ev, "tool_name", "unknown")
+            arguments = self._dispatch_arguments(ev)
+            try:
+                result_ev = await original_call_tool(ctx, ev)
+            except Exception as exc:
+                self._record_tool_call(
+                    name=name,
+                    arguments=arguments,
+                    response=None,
+                    error=str(exc),
+                )
+                raise
+
+            tool_output = getattr(result_ev, "tool_output", None)
+            if getattr(tool_output, "is_error", False):
+                self._record_tool_call(
+                    name=name,
+                    arguments=arguments,
+                    response=None,
+                    error=str(
+                        getattr(tool_output, "content", None)
+                        or getattr(tool_output, "raw_output", None)
+                        or "Tool call failed"
+                    ),
+                )
+            else:
+                raw = getattr(tool_output, "raw_output",
+                              None) if tool_output else None
+                self._record_tool_call(
+                    name=name,
+                    arguments=arguments,
+                    response=raw,
+                    error=None,
+                )
+            return result_ev
+
+        # type: ignore[attr-defined]
+        traced_call_tool._step_config = step_config
+        agent.call_tool = types.MethodType(traced_call_tool, agent)
+
+    def _function_tool(
         self,
         fn: Any,
         name: str,
         description: str,
     ) -> FunctionTool:
-        """Wrap a tool function so each invocation is appended to the trace."""
-        signature = inspect.signature(fn)
-
-        @functools.wraps(fn)
-        def traced(*args: Any, **kwargs: Any) -> Any:
-            try:
-                arguments = dict(signature.bind(*args, **kwargs).arguments)
-            except TypeError:
-                arguments = dict(kwargs)
-                for index, value in enumerate(args):
-                    arguments[f"arg_{index}"] = value
-            result = fn(*args, **kwargs)
-            self._record_tool_call(name, arguments, result)
-            return result
-
-        traced.__signature__ = signature  # type: ignore[attr-defined]
+        """Build a FunctionTool, preserving the original function signature."""
         return FunctionTool.from_defaults(
-            fn=traced,
+            fn=fn,
             name=name,
             description=description,
         )
@@ -300,7 +348,7 @@ class CustomerSupportAgent:
                 return str(query_engine.query(query))
 
             tools.append(
-                self._traced_function_tool(
+                self._function_tool(
                     search_knowledge_base,
                     name="search_knowledge_base",
                     description=(
@@ -319,7 +367,7 @@ class CustomerSupportAgent:
             logger.debug("💳 Adding billing lookup tool")
             billing_tool = BillingLookupTool()
             tools.append(
-                self._traced_function_tool(
+                self._function_tool(
                     billing_tool.lookup,
                     name=billing_tool.name,
                     description=billing_tool.description,
@@ -331,7 +379,7 @@ class CustomerSupportAgent:
             logger.debug("🎫 Adding ticket creation tool")
             ticket_tool = TicketCreationTool()
             tools.append(
-                self._traced_function_tool(
+                self._function_tool(
                     ticket_tool.create,
                     name=ticket_tool.name,
                     description=ticket_tool.description,
@@ -343,7 +391,7 @@ class CustomerSupportAgent:
             logger.debug("🔍 Adding system status tool")
             status_tool = SystemStatusTool()
             tools.append(
-                self._traced_function_tool(
+                self._function_tool(
                     status_tool.check,
                     name=status_tool.name,
                     description=status_tool.description,
@@ -361,7 +409,7 @@ class CustomerSupportAgent:
             Configured ReActAgent instance
         """
         # In newer versions of llama-index, use the constructor directly
-        return ReActAgent(
+        agent = ReActAgent(
             tools=self.tools,
             llm=self.llm,
             memory=self.memory,
@@ -369,6 +417,8 @@ class CustomerSupportAgent:
             system_prompt=SYSTEM_PROMPT,
             max_iterations=10,
         )
+        self._install_dispatch_trace(agent)
+        return agent
 
     def query(self, user_query: str, metadata: Optional[Dict[str, Any]] = None) -> str:
         """
@@ -381,9 +431,10 @@ class CustomerSupportAgent:
         Returns:
             The agent's response as a string.
 
-        Tool invocations made while handling this query are recorded and can
-        be read with get_tool_trace(). The trace is cleared at the start of
-        this call. query_with_trace() returns the answer and that trace together.
+        Tool attempts made while handling this query are recorded at dispatch
+        (including unknown tools and failed calls) and can be read with
+        get_tool_trace(). The trace is cleared at the start of this call.
+        query_with_trace() returns the answer and that trace together.
         """
         self._tool_calls.clear()
 
@@ -457,7 +508,7 @@ class CustomerSupportAgent:
         Returns:
             A dict with:
             - answer: the same string query() returns
-            - tool_calls: list of {order, name, arguments, response} in call order
+            - tool_calls: list of {order, name, arguments, response, error} in call order
         """
         answer = self.query(user_query, metadata)
         return {
