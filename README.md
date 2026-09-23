@@ -26,7 +26,7 @@ python verify_setup.py
 python run_cli.py
 
 # Generate test data from sample conversations in src/data/sample_conversations.json
-python generate_test_data.py --max-queries 5
+python run_sample_conversations.py --max-queries 5
 ```
 
 ## The Challenge

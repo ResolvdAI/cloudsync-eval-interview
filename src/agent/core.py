@@ -210,16 +210,27 @@ class CustomerSupportAgent:
 
         return index
 
-    def _record_tool_call(self, name: str, arguments: Dict[str, Any]) -> None:
-        """Record one real tool invocation, in call order."""
+    def _snapshot(self, value: Any) -> Any:
+        """Copy a value for the tool trace, falling back if it cannot be copied."""
         try:
-            arguments_snapshot = copy.deepcopy(arguments)
+            return copy.deepcopy(value)
         except Exception:
-            arguments_snapshot = dict(arguments)
+            if isinstance(value, dict):
+                return dict(value)
+            return value
+
+    def _record_tool_call(
+        self,
+        name: str,
+        arguments: Dict[str, Any],
+        response: Any,
+    ) -> None:
+        """Record one real tool invocation, in call order."""
         self._tool_calls.append({
             "order": len(self._tool_calls) + 1,
             "name": name,
-            "arguments": arguments_snapshot,
+            "arguments": self._snapshot(arguments),
+            "response": self._snapshot(response),
         })
 
     def get_tool_trace(self) -> List[Dict[str, Any]]:
@@ -231,6 +242,7 @@ class CustomerSupportAgent:
         - name: tool name
         - arguments: arguments actually passed to the tool. Defaults the
           caller omitted are not filled in.
+        - response: value the tool returned for that invocation.
 
         The list is cleared at the start of each query. This is a copy of
         the recorded calls, not a reconstruction from the final answer.
@@ -254,8 +266,9 @@ class CustomerSupportAgent:
                 arguments = dict(kwargs)
                 for index, value in enumerate(args):
                     arguments[f"arg_{index}"] = value
-            self._record_tool_call(name, arguments)
-            return fn(*args, **kwargs)
+            result = fn(*args, **kwargs)
+            self._record_tool_call(name, arguments, result)
+            return result
 
         traced.__signature__ = signature  # type: ignore[attr-defined]
         return FunctionTool.from_defaults(
@@ -444,7 +457,7 @@ class CustomerSupportAgent:
         Returns:
             A dict with:
             - answer: the same string query() returns
-            - tool_calls: list of {order, name, arguments} in call order
+            - tool_calls: list of {order, name, arguments, response} in call order
         """
         answer = self.query(user_query, metadata)
         return {

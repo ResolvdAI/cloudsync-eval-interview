@@ -28,7 +28,7 @@
 	],
 	"metadata": {
 		"description": "Sample customer queries for testing the support agent",
-		"usage": "Use these queries with create_test_dataset.py to generate test datasets, or create your own queries with run_cli.py",
+		"usage": "Use these queries with run_sample_conversations.py to generate test datasets, or create your own queries with run_cli.py",
 		"total_queries": 5
 	}
 }

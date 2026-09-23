@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-Generate test data by running sample queries through the agent.
-This script helps candidates create datasets for testing their evaluation system.
+Run sample conversations through the agent and write a scored dataset.
+
+Each result includes the final answer and the actual tool_calls trace
+(name, arguments, tool response, call order).
 """
 
 from src.agent.core import CustomerSupportAgent
@@ -46,19 +48,23 @@ def run_query(agent: CustomerSupportAgent, query_data: Dict) -> Dict:
     if 'customer_email' in query_data:
         metadata['customer_email'] = query_data['customer_email']
 
-    # Get agent response
-    response = agent.query(
+    result = agent.query_with_trace(
         query_data['query'], metadata=metadata if metadata else None)
+    response = result["answer"]
+    tool_calls = result["tool_calls"]
+
+    # Keep each generated case independent of earlier conversation turns.
+    agent.reset_memory()
 
     response_time = time.time() - start_time
     print(f"\r     Status: ✅ Complete ({response_time:.1f}s)")
 
-    # Extract tools used from response (simple heuristic)
-    tools_used = extract_tools_from_response(response)
-    if tools_used:
-        print(f"     Tools detected: {', '.join(tools_used)}")
+    if tool_calls:
+        names = ", ".join(call["name"] for call in tool_calls)
+        print(f"     Tool calls: {names}")
+    else:
+        print("     Tool calls: none")
 
-    # Show response preview if verbose
     if len(response) > 0:
         preview = response[:100].replace('\n', ' ')
         print(f"     Response preview: {preview}...")
@@ -67,39 +73,10 @@ def run_query(agent: CustomerSupportAgent, query_data: Dict) -> Dict:
         "test_id": query_data['id'],
         "query": query_data['query'],
         "response": response,
-        "tools_used": tools_used,
+        "tool_calls": tool_calls,
         "response_time": response_time,
         "customer_email": query_data.get('customer_email')
     }
-
-
-def extract_tools_from_response(response: str) -> List[str]:
-    """Extract which tools were used based on response content."""
-    tools = []
-    response_lower = response.lower()
-
-    # Check for billing lookup
-    if any(phrase in response_lower for phrase in [
-        "based on your billing", "your account shows",
-        "your subscription", "your plan"
-    ]):
-        tools.append("lookup_billing")
-
-    # Check for ticket creation
-    if "ticket-" in response_lower or "created a ticket" in response_lower:
-        tools.append("create_ticket")
-
-    # Check for system status
-    if any(phrase in response_lower for phrase in [
-        "system status", "services are operational", "no outages"
-    ]):
-        tools.append("check_system_status")
-
-    # Check for knowledge base
-    if len(response) > 500 or "according to" in response_lower:
-        tools.append("search_knowledge_base")
-
-    return tools
 
 
 def save_dataset(results: List[Dict], output_path: str):
@@ -126,7 +103,7 @@ def save_dataset(results: List[Dict], output_path: str):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate test datasets for agent evaluation')
+        description='Run sample conversations through the agent and write a dataset')
     parser.add_argument(
         '--max-queries',
         type=int,
@@ -221,19 +198,21 @@ def main():
     else:
         print("  No successful responses generated")
 
-    # Count tool usage
+    # Count actual tool invocations from the recorded traces
     if results:
         tool_counts = {}
         for result in results:
-            for tool in result['tools_used']:
-                tool_counts[tool] = tool_counts.get(tool, 0) + 1
+            for call in result.get("tool_calls", []):
+                name = call.get("name")
+                if name:
+                    tool_counts[name] = tool_counts.get(name, 0) + 1
 
         if tool_counts:
             print("\n🔧 Tool Usage:")
             for tool, count in tool_counts.items():
                 print(f"  {tool}: {count} times")
         else:
-            print("\n🔧 No tools were detected in responses")
+            print("\n🔧 No tools were invoked")
 
     print("\n💡 Next Steps:")
     print("  1. Analyze the responses in the generated dataset")
