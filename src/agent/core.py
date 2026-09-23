@@ -14,7 +14,7 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAI
 from llama_index.llms.anthropic import Anthropic
 from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.core.agent import ReActAgent
+from llama_index.core.agent import ReActAgent, ToolCall, ToolCallResult
 from llama_index.core.tools import FunctionTool, ToolMetadata
 from llama_index.core import (
     VectorStoreIndex,
@@ -23,6 +23,7 @@ from llama_index.core import (
     StorageContext,
     load_index_from_storage,
 )
+import copy
 import os
 from typing import List, Optional, Dict, Any
 from pathlib import Path
@@ -69,6 +70,8 @@ class CustomerSupportAgent:
             verbose: Whether to print verbose output
         """
         self.verbose = verbose
+        self._tool_calls: List[Dict[str, Any]] = []
+        self._pending_tool_ids: Dict[str, int] = {}
         self.knowledge_base_path = knowledge_base_path or settings.knowledge_base_path
         self.index_storage_path = "storage/vector_index"
 
@@ -206,6 +209,120 @@ class CustomerSupportAgent:
 
         return index
 
+    def _snapshot(self, value: Any) -> Any:
+        """Copy a value for the tool trace, falling back if it cannot be copied."""
+        try:
+            return copy.deepcopy(value)
+        except Exception:
+            if isinstance(value, dict):
+                return dict(value)
+            return value
+
+    def _record_tool_call(
+        self,
+        name: str,
+        arguments: Dict[str, Any],
+        response: Any,
+        error: Optional[str] = None,
+    ) -> None:
+        """Record one dispatched tool attempt, in call order."""
+        self._tool_calls.append({
+            "order": len(self._tool_calls) + 1,
+            "name": name,
+            "arguments": self._snapshot(arguments),
+            "response": self._snapshot(response),
+            "error": error,
+        })
+
+    def get_tool_trace(self) -> List[Dict[str, Any]]:
+        """
+        Return tool attempts recorded during the most recent query.
+
+        Each entry contains:
+        - order: 1-based position of the attempt within that query
+        - name: tool name as dispatched (including unknown names)
+        - arguments: arguments the agent dispatched. Defaults the caller
+          omitted are not filled in.
+        - response: value the tool returned, or null when dispatch failed
+        - error: null on success; a message when the attempt failed
+          (unknown tool, rejected arguments, or an exception)
+
+        The list is cleared at the start of each query. This is a copy of
+        the recorded attempts, not a reconstruction from the final answer.
+        """
+        return copy.deepcopy(self._tool_calls)
+
+    def _dispatch_arguments(self, ev: Any) -> Dict[str, Any]:
+        """Read the arguments the agent dispatched, before the tool runs."""
+        raw_kwargs = getattr(ev, "tool_kwargs", None)
+        if raw_kwargs is None:
+            return {}
+        if isinstance(raw_kwargs, dict):
+            return dict(raw_kwargs)
+        return {"value": raw_kwargs}
+
+    def _outcome_from_tool_output(self, tool_output: Any) -> tuple:
+        """Turn a ToolOutput into (response, error)."""
+        if tool_output is None:
+            return None, "Tool call failed"
+        if getattr(tool_output, "is_error", False):
+            return None, str(
+                getattr(tool_output, "content", None)
+                or getattr(tool_output, "raw_output", None)
+                or "Tool call failed"
+            )
+        return getattr(tool_output, "raw_output", None), None
+
+    def _on_tool_call_event(self, event: ToolCall) -> None:
+        """Record a tool attempt as soon as LlamaIndex emits it."""
+        self._record_tool_call(
+            name=getattr(event, "tool_name", "unknown"),
+            arguments=self._dispatch_arguments(event),
+            response=None,
+            error=None,
+        )
+        tool_id = getattr(event, "tool_id", None)
+        if tool_id:
+            self._pending_tool_ids[tool_id] = len(self._tool_calls) - 1
+
+    def _on_tool_call_result_event(self, event: ToolCallResult) -> None:
+        """Fill in the outcome for a previously recorded attempt."""
+        response, error = self._outcome_from_tool_output(
+            getattr(event, "tool_output", None)
+        )
+        tool_id = getattr(event, "tool_id", None)
+        index = self._pending_tool_ids.pop(tool_id, None) if tool_id else None
+        if index is not None:
+            self._tool_calls[index]["response"] = self._snapshot(response)
+            self._tool_calls[index]["error"] = error
+            return
+        self._record_tool_call(
+            name=getattr(event, "tool_name", "unknown"),
+            arguments=self._dispatch_arguments(event),
+            response=response,
+            error=error,
+        )
+
+    def _handle_agent_event(self, event: Any) -> None:
+        """Collect ToolCall / ToolCallResult events from the workflow stream."""
+        if isinstance(event, ToolCallResult):
+            self._on_tool_call_result_event(event)
+        elif isinstance(event, ToolCall):
+            self._on_tool_call_event(event)
+
+    def _function_tool(
+        self,
+        fn: Any,
+        name: str,
+        description: str,
+    ) -> FunctionTool:
+        """Build a FunctionTool, preserving the original function signature."""
+        return FunctionTool.from_defaults(
+            fn=fn,
+            name=name,
+            description=description,
+        )
+
     def _setup_tools(self) -> List[FunctionTool]:
         """
         Set up the agent's custom tools.
@@ -223,34 +340,61 @@ class CustomerSupportAgent:
                 similarity_top_k=3,
                 verbose=self.verbose
             )
-            kb_tool = FunctionTool.from_defaults(
-                fn=lambda query: str(query_engine.query(query)),
-                name="search_knowledge_base",
-                description=(
-                    "Search the CloudSync knowledge base for information about "
-                    "features, troubleshooting, FAQs, and documentation. "
-                    "Use this for general product questions and technical issues."
-                ),
+
+            def search_knowledge_base(query: str) -> str:
+                """Search general CloudSync product and troubleshooting facts."""
+                return str(query_engine.query(query))
+
+            tools.append(
+                self._function_tool(
+                    search_knowledge_base,
+                    name="search_knowledge_base",
+                    description=(
+                        "Search the CloudSync knowledge base for general product "
+                        "and troubleshooting facts, including features, pricing, "
+                        "setup, FAQs, and how to fix common problems. "
+                        "Use this for product questions that are not about a "
+                        "specific customer's billing, a current service issue, "
+                        "or creating a support ticket."
+                    ),
+                )
             )
-            tools.append(kb_tool)
 
         # Billing lookup tool
         if settings.enable_billing_tool:
             logger.debug("💳 Adding billing lookup tool")
             billing_tool = BillingLookupTool()
-            tools.append(billing_tool.as_function_tool())
+            tools.append(
+                self._function_tool(
+                    billing_tool.lookup,
+                    name=billing_tool.name,
+                    description=billing_tool.description,
+                )
+            )
 
         # Ticket creation tool
         if settings.enable_ticket_tool:
             logger.debug("🎫 Adding ticket creation tool")
             ticket_tool = TicketCreationTool()
-            tools.append(ticket_tool.as_function_tool())
+            tools.append(
+                self._function_tool(
+                    ticket_tool.create,
+                    name=ticket_tool.name,
+                    description=ticket_tool.description,
+                )
+            )
 
         # System status tool
         if settings.enable_status_tool:
             logger.debug("🔍 Adding system status tool")
             status_tool = SystemStatusTool()
-            tools.append(status_tool.as_function_tool())
+            tools.append(
+                self._function_tool(
+                    status_tool.check,
+                    name=status_tool.name,
+                    description=status_tool.description,
+                )
+            )
 
         logger.info(f"✅ Initialized {len(tools)} tools for agent")
         return tools
@@ -281,8 +425,16 @@ class CustomerSupportAgent:
             metadata: Optional metadata about the query (customer_id, etc.)
 
         Returns:
-            The agent's response as a string
+            The agent's response as a string.
+
+        Tool attempts are recorded from LlamaIndex ToolCall and ToolCallResult
+        events (including unknown tools and failed calls) and can be read with
+        get_tool_trace(). The trace is cleared at the start of this call.
+        query_with_trace() returns the answer and that trace together.
         """
+        self._tool_calls.clear()
+        self._pending_tool_ids.clear()
+
         logger.info(f"\n{'='*60}")
         logger.info(f"📨 New query received: {user_query[:100]}..." if len(
             user_query) > 100 else f"📨 New query received: {user_query}")
@@ -302,8 +454,12 @@ class CustomerSupportAgent:
         # Create a new async function to run the agent
         async def run_agent_async():
             logger.info("🤔 Agent is thinking...")
-            # The run method returns an EventResponse, we need to await it
-            response = await self.agent.run(formatted_query)
+            handler = self.agent.run(formatted_query)
+            try:
+                async for event in handler.stream_events():
+                    self._handle_agent_event(event)
+            finally:
+                response = await handler
             logger.info("✅ Agent has formulated a response")
             return response
 
@@ -334,6 +490,32 @@ class CustomerSupportAgent:
             response_str) > 200 else f"Response: {response_str}")
         logger.info(f"{'='*60}\n")
         return response_str
+
+    def query_with_trace(
+        self,
+        user_query: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Process a customer query and return the answer plus tool-call trace.
+
+        The trace lists each tool the agent actually invoked, in call order.
+        It is not inferred from the final answer.
+
+        Args:
+            user_query: The customer's question or request
+            metadata: Optional metadata about the query (customer_id, etc.)
+
+        Returns:
+            A dict with:
+            - answer: the same string query() returns
+            - tool_calls: list of {order, name, arguments, response, error} in call order
+        """
+        answer = self.query(user_query, metadata)
+        return {
+            "answer": answer,
+            "tool_calls": self.get_tool_trace(),
+        }
 
     def _format_query(self, query: str, metadata: Optional[Dict[str, Any]] = None) -> str:
         """

@@ -3,9 +3,7 @@ Custom tools for the Customer Support Agent.
 """
 
 from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta
-import random
-import json
+from datetime import datetime
 import logging
 from enum import Enum
 
@@ -13,6 +11,11 @@ from llama_index.core.tools import FunctionTool
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+# Interview reference date. Every mock timestamp is relative to this instant
+# so billing dates and ticket created_at stay consistent and repeatable.
+# last_payment.date is always before this date; next_billing_date is after it.
+FIXED_NOW = datetime(2026, 9, 23, 12, 0, 0)
 
 
 class TicketPriority(Enum):
@@ -45,49 +48,97 @@ class BillingLookupTool:
         """Initialize the billing lookup tool."""
         self.name = "lookup_billing"
         self.description = (
-            "Look up billing information for a customer. "
-            "Requires either customer_email or customer_id. "
-            "Returns subscription status, billing history, and payment method."
+            "Look up a customer's billing only when the user asks about billing "
+            "and provides an email address or customer ID. "
+            "Pass customer_email or customer_id exactly as provided. Do not invent identifiers. "
+            "Returns subscription status, billing history, and payment method. "
+            "If neither identifier is provided, returns an error."
         )
 
         # Mock data for demonstration
         self._mock_customers = self._generate_mock_customers()
 
     def _generate_mock_customers(self) -> Dict[str, Dict[str, Any]]:
-        """Generate mock customer billing data."""
-        plans = ["Free", "Basic", "Professional", "Enterprise"]
-        statuses = ["active", "past_due", "cancelled", "trialing"]
-
-        customers = {}
-        emails = [
-            "john.doe@example.com",
-            "jane.smith@company.com",
-            "support@startup.io",
-            "admin@enterprise.org",
-            "user@test.com"
+        """Generate fixed mock customer billing data (deterministic)."""
+        fixtures = [
+            {
+                "email": "john.doe@example.com",
+                "customer_id": "cust_1000",
+                "plan": "Professional",
+                "status": "active",
+                "monthly_amount": 29,
+                "next_billing_date": "2026-10-01",
+                "payment_method": "card",
+                "last_payment": {
+                    "date": "2026-09-01",
+                    "amount": 29,
+                    "status": "successful",
+                },
+            },
+            {
+                "email": "jane.smith@company.com",
+                "customer_id": "cust_1001",
+                "plan": "Professional",
+                "status": "active",
+                "monthly_amount": 29,
+                "next_billing_date": "2026-10-20",
+                "payment_method": "card",
+                "last_payment": {
+                    "date": "2026-08-20",
+                    "amount": 29,
+                    "status": "successful",
+                },
+            },
+            {
+                # Matches sample conv_003 (upgrade from Basic → Professional)
+                "email": "support@startup.io",
+                "customer_id": "cust_1002",
+                "plan": "Basic",
+                "status": "active",
+                "monthly_amount": 9,
+                "next_billing_date": "2026-10-25",
+                "payment_method": "ach",
+                "last_payment": {
+                    "date": "2026-08-25",
+                    "amount": 9,
+                    "status": "successful",
+                },
+            },
+            {
+                "email": "admin@enterprise.org",
+                "customer_id": "cust_1003",
+                "plan": "Enterprise",
+                "status": "active",
+                "monthly_amount": 299,
+                "next_billing_date": "2026-10-15",
+                "payment_method": "invoice",
+                "last_payment": {
+                    "date": "2026-09-15",
+                    "amount": 299,
+                    "status": "successful",
+                },
+            },
+            {
+                "email": "user@test.com",
+                "customer_id": "cust_1004",
+                "plan": "Free",
+                "status": "trialing",
+                "monthly_amount": 0,
+                "next_billing_date": "2026-10-08",
+                "payment_method": "card",
+                "last_payment": {
+                    "date": "2026-09-01",
+                    "amount": 0,
+                    "status": "successful",
+                },
+            },
         ]
 
-        for i, email in enumerate(emails):
-            customer_id = f"cust_{1000 + i}"
-            customers[email] = {
-                "customer_id": customer_id,
-                "email": email,
-                "plan": random.choice(plans),
-                "status": random.choice(statuses),
-                "monthly_amount": random.choice([0, 9, 29, 99, 299]),
-                "next_billing_date": (
-                    datetime.now() + timedelta(days=random.randint(1, 30))
-                ).strftime("%Y-%m-%d"),
-                "payment_method": random.choice(["card", "invoice", "ach"]),
-                "last_payment": {
-                    "date": (
-                        datetime.now() - timedelta(days=random.randint(1, 30))
-                    ).strftime("%Y-%m-%d"),
-                    "amount": random.choice([0, 9, 29, 99, 299]),
-                    "status": "successful"
-                }
-            }
-            customers[customer_id] = customers[email]
+        customers: Dict[str, Dict[str, Any]] = {}
+        for fixture in fixtures:
+            record = dict(fixture)
+            customers[fixture["email"]] = record
+            customers[fixture["customer_id"]] = record
 
         return customers
 
@@ -124,11 +175,11 @@ class BillingLookupTool:
                 "data": self._mock_customers[lookup_key]
             }
 
-        # Customer not found - generate a default response
+        # Customer not found — deterministic placeholder (no random IDs)
         return {
             "success": False,
             "data": {
-                "customer_id": customer_id or f"cust_{random.randint(2000, 9999)}",
+                "customer_id": customer_id or "cust_unknown",
                 "email": customer_email or "unknown@example.com",
                 "plan": None,
                 "status": None,
@@ -159,12 +210,19 @@ class TicketCreationTool:
 
     def __init__(self):
         """Initialize the ticket creation tool."""
+        priorities = ", ".join(priority.value for priority in TicketPriority)
+        categories = ", ".join(category.value for category in TicketCategory)
         self.name = "create_ticket"
         self.description = (
-            "Create a support ticket for issues requiring human intervention. "
-            "Use for complex technical issues, account problems, or when "
-            "the knowledge base doesn't have sufficient information. "
-            "Returns ticket ID and estimated response time."
+            "Create a support ticket only when escalation is appropriate: "
+            "the user asks for a ticket or a human, or the issue cannot be resolved "
+            "with search, billing, and system status. "
+            "Do not claim a ticket was created unless this tool returns success. "
+            f"priority must be one of: {priorities}. "
+            f"category must be one of: {categories}. "
+            "An invalid priority or category returns a validation error and does not create a ticket. "
+            "Pass customer_email only when the user provided one. "
+            "If no email is supplied it is stored as null; do not invent an email address."
         )
         self._ticket_counter = 1000
 
@@ -182,26 +240,26 @@ class TicketCreationTool:
         Args:
             subject: Brief summary of the issue
             description: Detailed description of the problem
-            customer_email: Customer's email address
-            priority: Ticket priority (low, medium, high, critical)
-            category: Ticket category (billing, technical, account, etc.)
+            customer_email: Email the user provided. Omit it instead of inventing one.
+            priority: One of low, medium, high, critical. Invalid values return an error.
+            category: One of billing, technical, account, feature_request, bug_report, other. Invalid values return an error.
 
         Returns:
-            Dictionary containing ticket information
+            Dictionary containing ticket information, or a validation error.
         """
-        # Validate priority
-        try:
-            priority_enum = TicketPriority(priority.lower())
-        except ValueError:
-            priority_enum = TicketPriority.MEDIUM
+        priority_error = self._choice_error("priority", priority, TicketPriority)
+        category_error = self._choice_error("category", category, TicketCategory)
+        errors = [message for message in (priority_error, category_error) if message]
+        if errors:
+            return {
+                "success": False,
+                "error": " ".join(errors),
+            }
 
-        # Validate category
-        try:
-            category_enum = TicketCategory(category.lower())
-        except ValueError:
-            category_enum = TicketCategory.OTHER
+        priority_enum = TicketPriority(priority.lower())
+        category_enum = TicketCategory(category.lower())
 
-        # Generate ticket ID
+        # Generate ticket ID only after validation succeeds
         self._ticket_counter += 1
         ticket_id = f"TICKET-{self._ticket_counter}"
 
@@ -217,11 +275,15 @@ class TicketCreationTool:
             "ticket_id": ticket_id,
             "subject": subject,
             "description": description,
-            "customer_email": customer_email or "not_provided@example.com",
+            "customer_email": (
+                customer_email
+                if isinstance(customer_email, str) and customer_email.strip()
+                else None
+            ),
             "priority": priority_enum.value,
             "category": category_enum.value,
             "status": "open",
-            "created_at": datetime.now().isoformat(),
+            "created_at": FIXED_NOW.isoformat(),
             "estimated_response_time": response_times[priority_enum],
             "assigned_to": None,
             "notes": "Ticket created via AI agent"
@@ -232,6 +294,18 @@ class TicketCreationTool:
             "message": f"Support ticket {ticket_id} created successfully",
             "data": ticket_data
         }
+
+    @staticmethod
+    def _choice_error(field: str, value: Any, enum_cls: Any) -> Optional[str]:
+        """Return a validation error when value is not a member of enum_cls."""
+        allowed = ", ".join(member.value for member in enum_cls)
+        if isinstance(value, str):
+            try:
+                enum_cls(value.lower())
+                return None
+            except ValueError:
+                pass
+        return f"Invalid {field} {value!r}. Expected one of: {allowed}."
 
     def as_function_tool(self) -> FunctionTool:
         """Convert to LlamaIndex FunctionTool."""
@@ -253,18 +327,18 @@ class SystemStatusTool:
     def __init__(self):
         """Initialize the system status tool."""
         self.name = "check_system_status"
+        self._services = self._initialize_services()
+        supported = ", ".join(self._services.keys())
         self.description = (
-            "Check the current status of CloudSync services including "
-            "file sync, API, web dashboard, and mobile apps. "
-            "Returns information about any ongoing issues or maintenance."
+            "Check CloudSync for a current service issue, outage, or degradation. "
+            f"If the user names a service, pass service as one of: {supported}. "
+            "Omit service when the user does not name one. "
+            "An unsupported service name returns an error and does not report every service."
         )
 
-        # Mock service status
-        self._services = self._initialize_services()
-
     def _initialize_services(self) -> Dict[str, Dict[str, Any]]:
-        """Initialize mock service status data."""
-        services = {
+        """Initialize fixed mock service status data (always operational)."""
+        return {
             "file_sync": {
                 "name": "File Synchronization",
                 "status": "operational",
@@ -302,34 +376,25 @@ class SystemStatusTool:
             }
         }
 
-        # Randomly add some issues for demonstration
-        if random.random() < 0.2:  # 20% chance of an issue
-            affected_service = random.choice(list(services.keys()))
-            services[affected_service]["status"] = random.choice([
-                "degraded_performance",
-                "partial_outage",
-                "maintenance"
-            ])
-            services[affected_service]["last_incident"] = {
-                "time": datetime.now().isoformat(),
-                "description": "Investigating reports of slow performance",
-                "affected_regions": ["US-East", "EU-West"]
-            }
-
-        return services
-
     def check(self, service: Optional[str] = None) -> Dict[str, Any]:
         """
         Check system status.
 
         Args:
-            service: Specific service to check (optional)
+            service: Service key (file_sync, api, web_dashboard, mobile_apps, authentication). Omit to check all services. Unsupported names return an error.
 
         Returns:
-            Dictionary containing status information
+            Dictionary containing status information, or an error for an unsupported service.
         """
-        if service and service in self._services:
-            # Return specific service status
+        if service is None:
+            return self._all_services_status()
+
+        try:
+            known = service in self._services
+        except TypeError:
+            known = False
+
+        if known:
             return {
                 "success": True,
                 "service": service,
@@ -337,7 +402,18 @@ class SystemStatusTool:
                 "overall_status": self._get_overall_status()
             }
 
-        # Return all services status
+        supported = ", ".join(self._services.keys())
+        return {
+            "success": False,
+            "error": (
+                f"Unsupported service {service!r}. "
+                f"Expected one of: {supported}."
+            ),
+            "service": service,
+        }
+
+    def _all_services_status(self) -> Dict[str, Any]:
+        """Return the status of every service."""
         all_operational = all(
             s["status"] == "operational" for s in self._services.values()
         )
@@ -361,18 +437,7 @@ class SystemStatusTool:
             return "Minor issues detected"
 
     def _get_maintenance_windows(self) -> List[Dict[str, Any]]:
-        """Get scheduled maintenance windows."""
-        # Mock maintenance windows
-        if random.random() < 0.3:  # 30% chance of scheduled maintenance
-            return [{
-                "service": "web_dashboard",
-                "start_time": (
-                    datetime.now() + timedelta(days=7)
-                ).strftime("%Y-%m-%d 02:00 UTC"),
-                "duration": "2 hours",
-                "description": "Database optimization and security updates",
-                "impact": "Web dashboard will be unavailable"
-            }]
+        """Get scheduled maintenance windows (fixed empty — no random windows)."""
         return []
 
     def _get_recent_incidents(self) -> List[Dict[str, Any]]:

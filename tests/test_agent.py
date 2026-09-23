@@ -6,12 +6,18 @@ and can be extended with more comprehensive evaluation tests.
 """
 
 from src.agent.prompts import SYSTEM_PROMPT
-from src.agent.tools import BillingLookupTool, TicketCreationTool, SystemStatusTool
+from src.agent.tools import (
+    BillingLookupTool,
+    TicketCreationTool,
+    SystemStatusTool,
+    FIXED_NOW,
+)
 from src.agent.core import CustomerSupportAgent
 import os
 import sys
 import json
 import pytest
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List
 from dotenv import load_dotenv
@@ -39,25 +45,59 @@ class TestAgentComponents:
                 pytest.skip("Required API key not set")
 
     def test_billing_tool(self):
-        """Test the billing lookup tool."""
+        """Test the billing lookup tool is deterministic."""
         tool = BillingLookupTool()
 
-        # Test with known email
+        # Known email — fixed fixture values
         result = tool.lookup(customer_email="john.doe@example.com")
         assert result["success"] is True
-        assert "data" in result
-        assert "plan" in result["data"]
+        assert result["data"]["plan"] == "Professional"
+        assert result["data"]["monthly_amount"] == 29
+        assert result["data"]["customer_id"] == "cust_1000"
 
-        # Test with customer ID
-        result = tool.lookup(customer_id="cust_1000")
-        assert result["success"] is True
+        # Same lookup twice returns identical data
+        assert tool.lookup(customer_email="john.doe@example.com") == result
 
-        # Test with no parameters
-        result = tool.lookup()
-        assert "error" in result
+        # Lookup by customer ID matches email lookup
+        by_id = tool.lookup(customer_id="cust_1000")
+        assert by_id["success"] is True
+        assert by_id["data"] == result["data"]
+
+        # Sample-conversation customer stays on Basic
+        startup = tool.lookup(customer_email="support@startup.io")
+        assert startup["success"] is True
+        assert startup["data"]["plan"] == "Basic"
+        assert startup["data"]["monthly_amount"] == 9
+
+        # Unknown customer — deterministic failure shape
+        unknown = tool.lookup(customer_email="nobody@example.com")
+        assert unknown["success"] is False
+        assert unknown["data"]["customer_id"] == "cust_unknown"
+        assert unknown["data"]["message"] == "Customer not found"
+        assert tool.lookup(customer_email="nobody@example.com") == unknown
+
+        # Missing identifiers
+        assert "error" in tool.lookup()
+
+        # Fixture dates sit on either side of the interview reference date
+        reference = FIXED_NOW.date()
+        for email in (
+            "john.doe@example.com",
+            "jane.smith@company.com",
+            "support@startup.io",
+            "admin@enterprise.org",
+            "user@test.com",
+        ):
+            data = tool.lookup(customer_email=email)["data"]
+            next_billing = datetime.fromisoformat(
+                data["next_billing_date"]).date()
+            last_payment = datetime.fromisoformat(
+                data["last_payment"]["date"]).date()
+            assert last_payment < reference
+            assert next_billing > reference
 
     def test_ticket_tool(self):
-        """Test the ticket creation tool."""
+        """Test the ticket creation tool is deterministic."""
         tool = TicketCreationTool()
 
         result = tool.create(
@@ -68,24 +108,50 @@ class TestAgentComponents:
         )
 
         assert result["success"] is True
-        assert "ticket_id" in result["data"]
+        assert result["data"]["ticket_id"] == "TICKET-1001"
         assert result["data"]["priority"] == "high"
-        assert "TICKET-" in result["data"]["ticket_id"]
+        assert result["data"]["created_at"] == FIXED_NOW.isoformat()
+
+        # Second ticket increments id but keeps fixed timestamp
+        second = tool.create(
+            subject="Another Issue",
+            description="Second ticket",
+            customer_email="test@example.com",
+        )
+        assert second["data"]["ticket_id"] == "TICKET-1002"
+        assert second["data"]["created_at"] == FIXED_NOW.isoformat()
+
+        # Fresh tool instance restarts the counter
+        fresh = TicketCreationTool().create(
+            subject="Fresh",
+            description="Restarted counter",
+        )
+        assert fresh["data"]["ticket_id"] == "TICKET-1001"
 
     def test_status_tool(self):
-        """Test the system status tool."""
+        """Test the system status tool is deterministic."""
         tool = SystemStatusTool()
 
-        # Test general status check
         result = tool.check()
         assert result["success"] is True
-        assert "overall_status" in result
-        assert "services" in result
+        assert result["overall_status"] == "operational"
+        assert result["maintenance_windows"] == []
+        assert result["recent_incidents"] == []
+        assert all(
+            s["status"] == "operational" for s in result["services"].values()
+        )
 
-        # Test specific service check
-        result = tool.check(service="api")
-        assert result["success"] is True
-        assert "data" in result
+        # Repeated checks are identical (no per-call randomness)
+        assert tool.check() == result
+
+        # Fresh instances match (no random incident injection at init)
+        assert SystemStatusTool().check() == result
+
+        # Specific service check
+        api = tool.check(service="api")
+        assert api["success"] is True
+        assert api["data"]["status"] == "operational"
+        assert api["overall_status"] == "All systems operational"
 
 
 class TestAgentResponses:

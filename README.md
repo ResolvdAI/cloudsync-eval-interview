@@ -22,16 +22,16 @@ pip install -r requirements.txt
 # Verify setup
 python verify_setup.py
 
-# Try the agent
-python run_cli.py
-
 # Generate test data from sample conversations in src/data/sample_conversations.json
-python generate_test_data.py --max-queries 5
+python run_sample_conversations.py --max-queries 5
+
+# OPTIONAL -- Try the agent to chat with it yourself
+python run_cli.py
 ```
 
 ## The Challenge
 
-In your system design interview, you discussed how to evaluate and monitor AI agents in production. Now implement a practical evaluation system that can:
+Implement a practical evaluation system that can:
 
 1. **Measure** agent performance systematically
 2. **Identify** specific failure modes and weaknesses  
@@ -39,29 +39,44 @@ In your system design interview, you discussed how to evaluate and monitor AI ag
 
 This is an **open-ended implementation challenge** - we want to see your engineering judgment on what matters most.
 
-### Core Requirements
+## Core Requirements
 
-**1. Evaluation Framework** (`src/evals/`)
+### Evaluation Framework** (`src/evals/`)
+
 - Implement code that can evaluate agent responses
 - Choose appropriate metrics for different aspects (accuracy, helpfulness, tool usage, etc.)
 - Make it easy to run evaluations repeatedly
 
-**2. Test Dataset**
+### Test Dataset**
+
 - Create or curate a set of test cases
 - Include diverse query types and difficulty levels
 - Document what each test case is evaluating
 
-**3. Baseline Performance Analysis**
+### Baseline Performance Analysis**
+
 - Run your evaluation on the current agent
 - Document performance: what works well, what doesn't
 - Identify specific failure modes
 
-### Deliverables
+## Deliverables
 
 1. **Code**: Evaluation system implementation (clean, documented, runnable)
-2. **Documentation** (`SOLUTION_NOTES.md`): 
-   - How your evaluation system works
-   - Baseline performance metrics
-   - Trade-offs and design decisions
+2. **Documentation** (`SOLUTION_NOTES.md`):
    - Any assumptions you made
+   - Trade-offs and design decisions
 3. **Test Results**: Output from running your evaluation with clear evidence of findings
+
+## Evaluation Criteria and Guidelines
+
+The goal of this interview is to see:
+
+- How you navigate a new codebase
+- What types of questions you ask
+- What assumptions you make
+- How well you work with your tools of choice
+- What you can get done in 1 hour and how you prioritize
+
+Focus on building a practical, working evaluation system and back up your approach with clear evidence rather than theoretical claims.
+
+Use any tools you need to help you complete the challenge. This includes development tools, LLMs, etc. as well as any packages you want to install to help you complete the challenge. If you need to install a package, please add it to the requirements.txt file.

@@ -50,7 +50,7 @@ def verify_project_structure():
         ("src/agent/prompts.py", "System prompts"),
         ("src/data/sample_conversations.json", "Test data"),
         ("tests/test_agent.py", "Test suite"),
-        ("example_usage.py", "Usage examples"),
+        ("run_sample_conversations.py", "Sample conversation runner"),
     ]
 
     for file_path, description in required_files:
@@ -109,19 +109,6 @@ def verify_project_structure():
     print("\n🔑 Checking Environment Variables...")
     print("-"*50)
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if api_key:
-        print(f"✅ ANTHROPIC_API_KEY is set (length: {len(api_key)})")
-    else:
-        print("⚠️  ANTHROPIC_API_KEY not set (required for agent to work)")
-        print("   Check that your .env file contains: ANTHROPIC_API_KEY=your-key-here")
-        # Check if .env file exists
-        env_path = Path('.env')
-        if env_path.exists():
-            print(f"   ℹ️  .env file found at {env_path.absolute()}")
-        else:
-            print(f"   ❌ .env file not found. Create one from .env.example")
-
     openai_key = os.environ.get("OPENAI_API_KEY")
     if openai_key:
         print(f"✅ OPENAI_API_KEY is set (length: {len(openai_key)})")
@@ -132,17 +119,7 @@ def verify_project_structure():
     print("📋 Setup Verification Complete!")
     print("="*50)
 
-    print("\n🚀 Next Steps:")
-    print("1. Install dependencies:")
-    print("   pip install -r requirements.txt")
-    print("\n2. Set your API key:")
-    print("   export ANTHROPIC_API_KEY='your-key-here'")
-    print("\n3. Test the system:")
-    print("   python example_usage.py")
-    print("\n4. Start the challenge:")
-    print("   - Review src/agent/prompts.py")
-    print("   - Test with sample conversations")
-    print("   - Build your evaluation system")
+    print("\nYou can safely begin testing the agent and building your solution.\n")
 
     return True
 
