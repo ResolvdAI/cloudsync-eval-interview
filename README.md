@@ -41,19 +41,19 @@ This is an **open-ended implementation challenge** - we want to see your enginee
 
 ## Core Requirements
 
-### Evaluation Framework** (`src/evals/`)
+### Evaluation Framework (`src/evals/`)
 
 - Implement code that can evaluate agent responses
 - Choose appropriate metrics for different aspects (accuracy, helpfulness, tool usage, etc.)
 - Make it easy to run evaluations repeatedly
 
-### Test Dataset**
+### Test Dataset
 
 - Create or curate a set of test cases
 - Include diverse query types and difficulty levels
 - Document what each test case is evaluating
 
-### Baseline Performance Analysis**
+### Baseline Performance Analysis
 
 - Run your evaluation on the current agent
 - Document performance: what works well, what doesn't

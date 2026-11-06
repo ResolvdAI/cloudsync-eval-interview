@@ -36,11 +36,12 @@ CloudSync is available on:
 
 ### What payment methods do you accept?
 We accept:
-- Credit cards (Visa, MasterCard, American Express)
-- Debit cards
+- Credit/debit cards (Visa, MasterCard, American Express, Discover)
 - PayPal
-- Bank transfers (Enterprise plans only)
-- Annual invoicing (Enterprise plans only)
+- ACH transfer (Enterprise plans only)
+- Wire transfer (Enterprise plans only)
+- Purchase orders (Enterprise plans only)
+- Cryptocurrency (Bitcoin, Ethereum) (Enterprise plans only)
 
 ### Can I change my plan?
 Yes, you can upgrade or downgrade your plan at any time:
